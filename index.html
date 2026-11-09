@@ -212,6 +212,7 @@
       <div class="tarjeta">
         <h1 id="ficha-titulo">Ficha</h1>
         <img id="ficha-foto" class="foto oculto" alt="Foto del animal">
+        <p class="sub" id="ficha-sin-foto">Sin fotografía cargada</p>
         <div id="ficha-datos" style="margin-top:.6rem"></div>
         <div class="fila" style="margin-top:1rem">
           <button class="btn sec" id="btn-editar">Editar</button>
@@ -244,6 +245,16 @@
           <div class="campo"><label>Estado reproductivo</label><input id="fa-reproductivo" placeholder="Vacía, Servida, Preñada…"></div>
           <div class="campo"><label>Notas</label><input id="fa-notas"></div>
         </div>
+        <div class="fila">
+          <div class="campo"><label>RP / caravana de origen</label><input id="fa-rp" placeholder="Ej.: 001"></div>
+          <div class="campo"><label>Identificación AsoAyrshire</label><input id="fa-registro" placeholder="Si aplica; es distinta del arete"></div>
+          <div class="campo"><label>Categoría de pedigrí</label><input id="fa-pedigri" placeholder="Ej.: E1, E2, M1…"></div>
+        </div>
+        <div class="fila">
+          <div class="campo"><label>Padre (declarado)</label><input id="fa-padre" placeholder="Nombre o código declarado, sin crear el animal"></div>
+          <div class="campo"><label>Madre (declarada)</label><input id="fa-madre" placeholder="Nombre o código declarado, sin crear el animal"></div>
+          <div class="campo"><label>Año de nacimiento (solo si no se sabe la fecha)</label><input id="fa-anio" type="number" min="1900" max="2100" placeholder="Ej.: 2021"></div>
+        </div>
         <div class="campo" id="fa-motivo-wrap"><label>Motivo del cambio *</label>
           <input id="fa-motivo" placeholder="Ej.: corrección del arete leído en campo"></div>
         <div class="fila">
@@ -252,9 +263,16 @@
         </div>
       </form>
       <div class="tarjeta">
-        <h2>Historial del animal</h2>
+        <h2>Kardex del animal</h2>
+        <p class="sub">Bitácora de novedades en orden de fecha: cada guardado agrega un evento con su fecha y su autor, automáticamente. El kardex no se edita ni se borra.</p>
         <ul class="hist" id="ficha-historial"></ul>
         <p class="vacio oculto" id="historial-vacio">Sin movimientos registrados.</p>
+        <div class="fila" id="kx-form" style="margin-top:.8rem">
+          <div class="campo" style="flex:3"><label for="kx-texto">Agregar un comentario al kardex</label>
+            <input id="kx-texto" placeholder="Ej.: revisada en campo, sin novedad"></div>
+          <div style="flex:0; min-width:160px; align-self:end">
+            <button class="btn sec" type="button" id="btn-comentario" style="width:100%">Agregar al kardex</button></div>
+        </div>
       </div>
     </section>
 
@@ -265,7 +283,11 @@
       <div class="tarjeta">
         <h2>Fase 1 · Cargar y validar</h2>
         <p class="sub">Archivo .xlsx o .csv con las columnas de la plantilla:
-          <b>arete, nombre, sexo, categoria, fecha_nacimiento, raza, rodeo, estado</b>. Solo arete y nombre son obligatorios.</p>
+          <b>arete, nombre, sexo, categoria, categoria_pedigri, fecha_nacimiento, raza, rp_origen, registro_asociacion, padre, madre, rodeo, estado</b>.
+          Solo arete y nombre son obligatorios. El arete se lee como texto («001» conserva sus ceros);
+          el RP y la identificación de la asociación son datos separados del arete, y padre/madre son
+          referencias declaradas: no crean animales. Si solo se sabe el año de nacimiento, escríbalo
+          (ej.: 2021) en fecha_nacimiento y queda registrado como año, sin inventar día ni mes.</p>
         <div class="campo"><label for="input-excel">Archivo</label>
           <input type="file" id="input-excel" accept=".xlsx,.xls,.csv"></div>
         <div id="imp-resumen"></div>
@@ -273,7 +295,7 @@
       <div class="tarjeta oculto" id="imp-fase2">
         <h2>Fase 2 · Confirmar la carga</h2>
         <p class="sub" id="imp-fase2-texto"></p>
-        <button class="btn" id="btn-confirmar-carga">Confirmar e importar</button>
+        <button class="btn" id="btn-confirmar-carga">Incorporar únicamente filas válidas</button>
         <button class="btn sec" id="btn-cancelar-carga">Cancelar</button>
       </div>
     </section>
@@ -281,7 +303,7 @@
     <!-- ===== CARGAS ===== -->
     <section id="v-cargas" class="oculto">
       <h1>Cargas de importación</h1>
-      <p class="sub">Cada carga queda registrada. Si una carga entró mal, puede deshacerse: los animales de esa carga se retiran y todo queda en el historial.</p>
+      <p class="sub">Cada carga queda registrada. Si una carga entró mal, puede deshacerse: los animales de esa carga se retiran y todo queda en el kardex de cada uno. Si algún animal de la carga ya tuvo cambios posteriores, la reversión se bloquea para no perderlos.</p>
       <div class="tarjeta">
         <div style="overflow-x:auto">
         <table>
@@ -308,7 +330,7 @@
 const CFG = window.AGROT3CH_CONFIG || {};
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const fmtFecha = iso => { if(!iso) return "—"; const [y,m,d] = String(iso).slice(0,10).split("-"); return `${d}/${m}/${y}`; };
+const fmtFecha = iso => { if(!iso) return "Sin dato"; const [y,m,d] = String(iso).slice(0,10).split("-"); return `${d}/${m}/${y}`; };
 
 let sb = null, usuario = null, miOrg = null;
 let animales = [], rodeos = [], animalActual = null, modoRegistro = false;
@@ -387,6 +409,7 @@ function reiniciarEstado(){
   animales = []; rodeos = []; animalActual = null;
   $("ficha-datos").innerHTML = ""; $("ficha-historial").innerHTML = "";
   $("ficha-titulo").textContent = "Ficha";
+  if($("kx-texto")) $("kx-texto").value = "";
   $("ficha-foto").classList.add("oculto"); $("ficha-foto").removeAttribute("src");
   $("form-animal").classList.add("oculto");
   $("buscar").value = ""; $("org-nombre").value = "";
@@ -487,9 +510,9 @@ function renderAnimales(){
   const chip = est => est === "Activo" ? "verde" : (est === "Muerto" || est === "Baja") ? "rojo" : "ambar";
   $("tabla-animales").innerHTML = lista.map(a => `
     <tr class="click" data-id="${a.id}">
-      <td><b>${esc(a.arete)}</b></td><td>${esc(a.nombre)}</td><td>${esc(a.sexo || "—")}</td>
-      <td>${esc(a.categoria || "—")}</td><td>${fmtFecha(a.fecha_nacimiento)}</td>
-      <td>${esc(a.rodeos ? a.rodeos.nombre : "—")}</td>
+      <td><b>${esc(a.arete)}</b></td><td>${esc(a.nombre)}</td><td>${esc(a.sexo || "Sin dato")}</td>
+      <td>${esc(a.categoria || "Sin dato")}</td><td>${a.fecha_nacimiento ? fmtFecha(a.fecha_nacimiento) : (a.anio_nacimiento ? a.anio_nacimiento + " (solo año)" : "Sin dato")}</td>
+      <td>${esc(a.rodeos ? a.rodeos.nombre : "Sin dato")}</td>
       <td><span class="chip ${chip(a.estado_existencia)}">${esc(a.estado_existencia)}</span></td>
     </tr>`).join("");
   $("animales-vacio").classList.toggle("oculto", lista.length > 0);
@@ -510,29 +533,50 @@ function abrirFicha(id){
     $("ficha-titulo").textContent = "Nuevo animal";
     $("ficha-datos").innerHTML = '<p class="sub">Complete los datos y guarde. Solo arete y nombre son obligatorios.</p>';
     $("ficha-foto").classList.add("oculto");
+    $("ficha-sin-foto").classList.add("oculto"); $("kx-form").classList.add("oculto");
     $("ficha-historial").innerHTML = ""; $("historial-vacio").classList.remove("oculto");
     $("btn-eliminar").classList.add("oculto"); $("btn-foto").classList.add("oculto");
     abrirFormulario(null);
     return;
   }
   $("btn-eliminar").classList.remove("oculto"); $("btn-foto").classList.remove("oculto");
+  $("kx-form").classList.remove("oculto");
   const a = animalActual;
   $("ficha-titulo").textContent = `${a.arete} · ${a.nombre}`;
-  const campo = (t,v) => `<div style="min-width:140px; flex:1"><label>${t}</label><div>${esc(v || "—")}</div></div>`;
+  const campo = (t,v) => `<div style="min-width:140px; flex:1"><label>${t}</label><div>${esc(v || "Sin dato")}</div></div>`;
+  const nac = a.fecha_nacimiento ? fmtFecha(a.fecha_nacimiento)
+    : (a.anio_nacimiento ? `${a.anio_nacimiento} (solo el año)` : null);
   $("ficha-datos").innerHTML = `<div class="fila">
-    ${campo("Sexo", a.sexo)}${campo("Categoría", a.categoria)}${campo("Nacimiento", fmtFecha(a.fecha_nacimiento))}
-    ${campo("Raza / cruza", a.raza)}${campo("Rodeo", a.rodeos ? a.rodeos.nombre : null)}
+    ${campo("Sexo", a.sexo)}${campo("Categoría", a.categoria)}${campo("Categoría de pedigrí", a.categoria_pedigri)}
+    ${campo("Nacimiento", nac)}${campo("Raza / cruza", a.raza)}
+    ${campo("Rodeo", a.rodeos ? a.rodeos.nombre : null)}
     ${campo("Estado", a.estado_existencia)}${campo("Estado reproductivo", a.estado_reproductivo)}
+    ${campo("RP / caravana de origen", a.rp_origen)}${campo("Identificación AsoAyrshire", a.registro_asociacion)}
+    ${campo("Padre (declarado)", a.padre)}${campo("Madre (declarada)", a.madre)}
     ${campo("Notas", a.notas)}</div>`;
   cargarFoto(a); cargarHistorial(a.id);
 }
 
 async function cargarFoto(a){
-  const img = $("ficha-foto");
-  if(!a.foto_path){ img.classList.add("oculto"); img.removeAttribute("src"); return; }
+  const img = $("ficha-foto"), sinFoto = $("ficha-sin-foto");
+  if(!a.foto_path){ img.classList.add("oculto"); img.removeAttribute("src"); sinFoto.classList.remove("oculto"); return; }
   const { data } = await sb.storage.from("fotos-animales").createSignedUrl(a.foto_path, 3600);
-  if(data && data.signedUrl){ img.src = data.signedUrl; img.classList.remove("oculto"); }
-  else img.classList.add("oculto");
+  if(data && data.signedUrl){ img.src = data.signedUrl; img.classList.remove("oculto"); sinFoto.classList.add("oculto"); }
+  else { img.classList.add("oculto"); sinFoto.classList.remove("oculto"); }
+}
+
+/* ---------------- Kardex del animal (D71 + S1-D) ----------------
+   Bitácora append-only: cada guardado (creación, edición, foto,
+   eliminación, carga, deshacer, comentario) agrega un evento con
+   fecha y autor, automáticamente. Nunca se edita ni se borra. */
+async function registrarEvento(animalId, accion, motivo, detalle){
+  const fila = { org_id: miOrg.id, animal_id: animalId, accion,
+    autor_email: usuario ? (usuario.email || null) : null };
+  if(motivo) fila.motivo = motivo;
+  if(detalle) fila.detalle = detalle;
+  const { error } = await sb.from("historial").insert(fila);
+  if(error) console.error("Kardex:", error.message);
+  return error || null;
 }
 
 async function cargarHistorial(animalId){
@@ -540,12 +584,46 @@ async function cargarHistorial(animalId){
     .select("*").eq("animal_id", animalId).order("created_at", { ascending: false });
   const items = data || [];
   const nombres = { creacion:"Creación", edicion:"Edición", eliminacion:"Eliminación",
-                    carga:"Llegó en una carga", deshacer_carga:"Retirado al deshacer una carga" };
-  $("ficha-historial").innerHTML = items.map(h => `
-    <li><b>${nombres[h.accion] || h.accion}</b>${h.motivo ? " — " + esc(h.motivo) : ""}
-      <div class="f">${new Date(h.created_at).toLocaleString("es-CO")}</div></li>`).join("");
+                    carga:"Llegó en una carga", deshacer_carga:"Retirado al deshacer una carga",
+                    comentario:"Comentario" };
+  const etiquetas = { arete:"Arete", nombre:"Nombre", sexo:"Sexo", categoria:"Categoría",
+    categoria_pedigri:"Categoría de pedigrí", fecha_nacimiento:"Nacimiento",
+    anio_nacimiento:"Año de nacimiento", raza:"Raza / cruza", rodeo_id:"Rodeo",
+    estado_existencia:"Estado", estado_reproductivo:"Estado reproductivo", notas:"Notas",
+    rp_origen:"RP / caravana de origen", registro_asociacion:"Identificación AsoAyrshire",
+    padre:"Padre (declarado)", madre:"Madre (declarada)", foto_path:"Foto" };
+  const valor = (k, v) => {
+    if(v === null || v === undefined || v === "") return "Sin dato";
+    if(k === "rodeo_id"){ const r = rodeos.find(x => x.id === v); return r ? r.nombre : String(v); }
+    if(k === "fecha_nacimiento") return fmtFecha(v);
+    return String(v);
+  };
+  $("ficha-historial").innerHTML = items.map(h => {
+    let cambios = "";
+    if(h.accion === "edicion" && h.detalle && typeof h.detalle === "object"){
+      const ks = Object.keys(h.detalle).filter(k => {
+        const d = h.detalle[k];
+        return d && typeof d === "object" && ("de" in d || "a" in d) && k !== "org_id";
+      });
+      if(ks.length) cambios = `<div class="f">${ks.map(k =>
+        `${etiquetas[k] || k}: ${esc(valor(k, h.detalle[k].de))} → ${esc(valor(k, h.detalle[k].a))}`).join("<br>")}</div>`;
+    }
+    return `<li><b>${nombres[h.accion] || h.accion}</b>${h.motivo ? " — " + esc(h.motivo) : ""}${cambios}
+      <div class="f">${new Date(h.created_at).toLocaleString("es-CO")} · por ${esc(h.autor_email || "autor no registrado")}</div></li>`;
+  }).join("");
   $("historial-vacio").classList.toggle("oculto", items.length > 0);
 }
+
+$("btn-comentario").addEventListener("click", async () => {
+  if(!animalActual) return;
+  const texto = $("kx-texto").value.trim();
+  if(!texto){ aviso("Escriba el comentario antes de agregarlo al kardex.", "error"); return; }
+  const errKx = await registrarEvento(animalActual.id, "comentario", texto, { fuente: "manual" });
+  if(errKx){ aviso("No se pudo agregar el comentario al kardex: " + errKx.message, "error"); return; }
+  $("kx-texto").value = "";
+  await cargarHistorial(animalActual.id);
+  aviso("Comentario agregado al kardex, con fecha y autor.", "ok");
+});
 
 $("ficha-volver").addEventListener("click", () => irA("animales"));
 
@@ -563,6 +641,12 @@ function abrirFormulario(a){
   $("fa-estado").value = a ? a.estado_existencia : "Activo";
   $("fa-reproductivo").value = a ? (a.estado_reproductivo || "") : "";
   $("fa-notas").value = a ? (a.notas || "") : "";
+  $("fa-rp").value = a ? (a.rp_origen || "") : "";
+  $("fa-registro").value = a ? (a.registro_asociacion || "") : "";
+  $("fa-pedigri").value = a ? (a.categoria_pedigri || "") : "";
+  $("fa-padre").value = a ? (a.padre || "") : "";
+  $("fa-madre").value = a ? (a.madre || "") : "";
+  $("fa-anio").value = a ? (a.anio_nacimiento || "") : "";
   $("fa-motivo").value = "";
   $("fa-motivo-wrap").classList.toggle("oculto", !a); // el motivo se exige al corregir (S1-D)
   f.scrollIntoView({ behavior: "smooth" });
@@ -584,6 +668,7 @@ $("form-animal").addEventListener("submit", async e => {
   const editando = !!animalActual;
   const motivo = $("fa-motivo").value.trim();
   if(editando && !motivo){ aviso("Escriba el motivo del cambio: toda corrección queda registrada con su motivo.", "error"); return; }
+  const anioCrudo = parseInt($("fa-anio").value, 10);
   const datos = {
     org_id: miOrg.id,
     arete: $("fa-arete").value.trim(),
@@ -591,10 +676,19 @@ $("form-animal").addEventListener("submit", async e => {
     sexo: $("fa-sexo").value || null,
     categoria: $("fa-categoria").value.trim() || null,
     fecha_nacimiento: $("fa-nacimiento").value || null,
+    // Si hay fecha completa, manda la fecha; el año solo conserva la
+    // precisión conocida sin inventar día ni mes (S1-CA05).
+    anio_nacimiento: $("fa-nacimiento").value ? null
+      : (Number.isInteger(anioCrudo) && anioCrudo >= 1900 && anioCrudo <= 2100 ? anioCrudo : null),
     raza: $("fa-raza").value.trim() || null,
     estado_existencia: $("fa-estado").value,
     estado_reproductivo: $("fa-reproductivo").value.trim() || null,
-    notas: $("fa-notas").value.trim() || null
+    notas: $("fa-notas").value.trim() || null,
+    rp_origen: $("fa-rp").value.trim() || null,
+    registro_asociacion: $("fa-registro").value.trim() || null,
+    categoria_pedigri: $("fa-pedigri").value.trim() || null,
+    padre: $("fa-padre").value.trim() || null,
+    madre: $("fa-madre").value.trim() || null
   };
   if(!datos.arete || !datos.nombre){ aviso("Arete y nombre son obligatorios.", "error"); return; }
   try{
@@ -607,15 +701,14 @@ $("form-animal").addEventListener("submit", async e => {
       }
       const { error } = await sb.from("animales").update(datos).eq("id", animalActual.id);
       if(error) throw error;
-      await sb.from("historial").insert({ org_id: miOrg.id, animal_id: animalActual.id,
-        accion: "edicion", motivo, detalle: cambios });
-      aviso("Animal actualizado y corrección registrada con su motivo.", "ok");
+      await registrarEvento(animalActual.id, "edicion", motivo,
+        Object.assign(cambios, { fuente: "manual" }));
+      aviso("Animal actualizado. La corrección quedó en el kardex, con motivo, fecha y autor.", "ok");
     }else{
       const { data, error } = await sb.from("animales").insert(datos).select().single();
       if(error) throw error;
-      await sb.from("historial").insert({ org_id: miOrg.id, animal_id: data.id,
-        accion: "creacion", motivo: "Registro manual" });
-      aviso("Animal creado.", "ok");
+      await registrarEvento(data.id, "creacion", "Registro manual", { fuente: "manual" });
+      aviso("Animal creado y registrado en su kardex.", "ok");
     }
     await cargarTodo();
     const id = editando ? animalActual.id : animales.find(x => x.arete === datos.arete && !x.eliminado)?.id;
@@ -635,9 +728,8 @@ $("btn-eliminar").addEventListener("click", async () => {
   const { error } = await sb.from("animales")
     .update({ eliminado: true }).eq("id", animalActual.id);
   if(error){ aviso("No se pudo eliminar: " + error.message, "error"); return; }
-  await sb.from("historial").insert({ org_id: miOrg.id, animal_id: animalActual.id,
-    accion: "eliminacion", motivo: motivo.trim() });
-  aviso("Animal eliminado con su motivo registrado.", "ok");
+  await registrarEvento(animalActual.id, "eliminacion", motivo.trim(), { fuente: "manual" });
+  aviso("Animal eliminado. La eliminación quedó en su kardex, con motivo, fecha y autor.", "ok");
   await cargarTodo(); irA("animales");
 });
 
@@ -647,20 +739,32 @@ $("input-foto").addEventListener("change", async e => {
   const file = e.target.files[0]; e.target.value = "";
   if(!file || !animalActual) return;
   try{
-    const blob = await comprimirImagen(file, 900);
+    // Límites de foto (S1-CA12 / D69): lado mayor ≤ 1600 px y
+    // archivo < 500.000 bytes. La compresión en canvas rehace la
+    // imagen y elimina los metadatos, incluido el GPS, antes de enviar.
+    let blob = await comprimirImagen(file, 1200, 0.82);
+    if(blob.size >= 500000) blob = await comprimirImagen(file, 1000, 0.72);
+    if(blob.size >= 500000) blob = await comprimirImagen(file, 900, 0.6);
+    if(blob.size >= 500000)
+      throw new Error("la foto sigue pesando 500 KB o más tras comprimir; no se guardó nada y puede reintentar con otra imagen.");
     const ruta = `${miOrg.id}/${animalActual.id}.jpg`;
+    const eraNueva = !animalActual.foto_path;
     const { error } = await sb.storage.from("fotos-animales")
       .upload(ruta, blob, { upsert: true, contentType: "image/jpeg" });
     if(error) throw error;
     const { error: e2 } = await sb.from("animales").update({ foto_path: ruta }).eq("id", animalActual.id);
     if(e2) throw e2;
     animalActual.foto_path = ruta;
+    await registrarEvento(animalActual.id, "edicion",
+      eraNueva ? "Foto cargada" : "Foto reemplazada",
+      { foto_path: { de: eraNueva ? null : "foto anterior", a: "foto actual" }, fuente: "manual" });
     await cargarFoto(animalActual);
-    aviso("Foto guardada.", "ok");
+    await cargarHistorial(animalActual.id);
+    aviso("Foto guardada (sin GPS, dentro de los límites) y registrada en el kardex.", "ok");
   }catch(ex){ aviso("No se pudo subir la foto: " + (ex.message || ex), "error"); }
 });
 
-function comprimirImagen(file, maxLado){
+function comprimirImagen(file, maxLado, calidad){
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
@@ -669,7 +773,7 @@ function comprimirImagen(file, maxLado){
       canvas.width = Math.round(img.width * escala);
       canvas.height = Math.round(img.height * escala);
       canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob(b => b ? resolve(b) : reject(new Error("sin blob")), "image/jpeg", 0.82);
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error("sin blob")), "image/jpeg", calidad || 0.82);
       URL.revokeObjectURL(img.src);
     };
     img.onerror = reject;
@@ -694,6 +798,17 @@ function fechaDesdeCelda(v){
   return null;
 }
 
+/* Nacimiento de solo año (S1-CA05): conserva la precisión conocida,
+   sin inventar día ni mes. Un entero 1900–2100 en la celda se lee
+   como año, no como fecha serial de Excel. */
+function anioDesdeCelda(v){
+  if(typeof v === "number" && Number.isInteger(v) && v >= 1900 && v <= 2100) return v;
+  const s = String(v ?? "").trim();
+  return /^(19|20)\d{2}$/.test(s) ? parseInt(s, 10) : null;
+}
+
+let impErrores = [];
+
 $("input-excel").addEventListener("change", async e => {
   const file = e.target.files[0]; if(!file) return;
   impArchivo = file.name; impFilasValidas = [];
@@ -703,51 +818,112 @@ $("input-excel").addEventListener("change", async e => {
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf, { type: "array" });
     const ws = wb.Sheets[wb.SheetNames[0]];
-    const filasCrudas = XLSX.utils.sheet_to_json(ws, { defval: "" });
+    const filasCrudas = XLSX.utils.sheet_to_json(ws, { defval: "", blankrows: true });
     if(!filasCrudas.length){ res.innerHTML = '<div class="aviso error">El archivo no tiene filas de datos.</div>'; return; }
 
     const claves = {}; Object.keys(filasCrudas[0]).forEach(k => claves[norm(k)] = k);
     const col = nombre => claves[norm(nombre)];
+    const colAny = (...nombres) => { for(const n of nombres){ const c = col(n); if(c) return c; } return undefined; };
     if(!col("arete") || !col("nombre")){
       res.innerHTML = '<div class="aviso error">Faltan las columnas obligatorias <b>arete</b> y <b>nombre</b>. Revise la plantilla.</div>'; return;
     }
-    const existentes = new Set(animales.filter(a => !a.eliminado).map(a => a.arete.toUpperCase()));
-    const enArchivo = new Set(); const errores = []; const validas = [];
+    // El arete se lee como TEXTO tal como se ve en la celda (S1-CA04):
+    // «001» conserva sus ceros y no se convierte en el número 1.
+    const idxArete = Object.keys(filasCrudas[0]).indexOf(col("arete"));
+    const areteTexto = i => {
+      const celda = ws[XLSX.utils.encode_cell({ r: i + 1, c: idxArete })];
+      if(!celda) return "";
+      return String(celda.w !== undefined ? celda.w : (celda.v ?? "")).trim();
+    };
+    // Columnas que la plantilla no conoce: observación, no bloqueo (S1-CA08).
+    const conocidas = new Set(["arete","nombre","sexo","categoria","categoriapedigri","pedigri",
+      "fechanacimiento","raza","rp","rporigen","caravana","rpcaravanadeorigen",
+      "registroasociacion","identificacionasoayrshire","asoayrshire","registro",
+      "padre","madre","rodeo","finca","estado","estadoexistencia"]);
+    const observaciones = Object.keys(filasCrudas[0]).filter(k => !conocidas.has(norm(k)))
+      .map(k => `Columna no prevista en la plantilla: «${k}». Se ignora; sus datos no entran.`);
+    const cRP = colAny("rp", "rp_origen", "caravana", "rp_caravana_de_origen");
+    const cReg = colAny("registro_asociacion", "identificacion_asoayrshire", "asoayrshire", "registro");
+    const cPed = colAny("categoria_pedigri", "pedigri");
+    const cPadre = colAny("padre"), cMadre = colAny("madre");
+    const cRodeo = colAny("rodeo", "finca");
+    // Unicidad por organización (D66) también frente a eliminados: un
+    // arete eliminado NO se reactiva ni se duplica en silencio (S1-CA06).
+    const existentes = new Map(animales.map(a => [a.arete.toUpperCase(), a]));
+    const enArchivo = new Set(); const errores = []; const advertencias = []; const validas = [];
     filasCrudas.forEach((f, i) => {
       const n = i + 2; // fila en la hoja (1 = encabezado)
-      const arete = String(f[col("arete")] ?? "").trim();
+      const arete = areteTexto(i) || String(f[col("arete")] ?? "").trim();
       const nombre = String(f[col("nombre")] ?? "").trim();
       if(!arete && !nombre) return; // fila vacía
-      if(!arete){ errores.push(`Fila ${n}: falta el arete.`); return; }
-      if(!nombre){ errores.push(`Fila ${n} (${arete}): falta el nombre.`); return; }
+      if(!arete){ errores.push({ fila: n, arete: "", campo: "arete", causa: "Falta el arete." }); return; }
+      if(!nombre){ errores.push({ fila: n, arete, campo: "nombre", causa: "Falta el nombre." }); return; }
       const clave = arete.toUpperCase();
-      if(enArchivo.has(clave)){ errores.push(`Fila ${n}: el arete ${arete} está repetido dentro del archivo.`); return; }
-      if(existentes.has(clave)){ errores.push(`Fila ${n}: el arete ${arete} ya existe en su inventario.`); return; }
+      if(enArchivo.has(clave)){ errores.push({ fila: n, arete, campo: "arete", causa: "El arete está repetido dentro del archivo." }); return; }
+      const previo = existentes.get(clave);
+      if(previo){
+        errores.push({ fila: n, arete, campo: "arete", causa: previo.eliminado
+          ? "Ese arete existe en un animal eliminado; no se reactiva ni se duplica automáticamente."
+          : "Ese arete ya existe en su inventario; no se sobrescribe." });
+        return;
+      }
       enArchivo.add(clave);
       const sexoCrudo = norm(f[col("sexo")]);
+      const sexoTxt = String(f[col("sexo")] ?? "").trim();
+      if(sexoTxt && !sexoCrudo.startsWith("h") && !sexoCrudo.startsWith("m"))
+        advertencias.push(`Fila ${n} (${arete}): sexo «${sexoTxt}» no reconocido; queda Sin dato.`);
+      const vFecha = f[col("fecha_nacimiento")];
+      let fecha = null, anio = anioDesdeCelda(vFecha);
+      if(anio === null) fecha = fechaDesdeCelda(vFecha);
+      else if(typeof vFecha === "string" && vFecha.trim() !== String(anio)) fecha = fechaDesdeCelda(vFecha), anio = fecha ? null : anio;
+      if(vFecha !== null && vFecha !== undefined && String(vFecha).trim() !== "" && !fecha && anio === null)
+        advertencias.push(`Fila ${n} (${arete}): la fecha de nacimiento no se reconoció; queda Sin dato.`);
       validas.push({
         arete, nombre,
         sexo: sexoCrudo.startsWith("h") ? "Hembra" : sexoCrudo.startsWith("m") ? "Macho" : null,
         categoria: String(f[col("categoria")] ?? "").trim() || null,
-        fecha_nacimiento: fechaDesdeCelda(f[col("fecha_nacimiento")]),
+        categoria_pedigri: cPed ? (String(f[cPed] ?? "").trim() || null) : null,
+        fecha_nacimiento: fecha, anio_nacimiento: anio,
         raza: String(f[col("raza")] ?? "").trim() || null,
-        rodeo_nombre: String(f[col("rodeo")] ?? "").trim() || null,
+        rp_origen: cRP ? (String(f[cRP] ?? "").trim() || null) : null,
+        registro_asociacion: cReg ? (String(f[cReg] ?? "").trim() || null) : null,
+        padre: cPadre ? (String(f[cPadre] ?? "").trim() || null) : null,
+        madre: cMadre ? (String(f[cMadre] ?? "").trim() || null) : null,
+        rodeo_nombre: cRodeo ? (String(f[cRodeo] ?? "").trim() || null) : null,
         estado_existencia: ["Activo","Vendido","Muerto","Baja"]
           .find(x => norm(x) === norm(f[col("estado")])) || "Activo"
       });
     });
 
-    impFilasValidas = validas;
+    impFilasValidas = validas; impErrores = errores;
+    const txtErr = e => `Fila ${e.fila}${e.arete ? " (" + e.arete + ")" : ""} · campo ${e.campo}: ${e.causa}`;
     res.innerHTML = `
       <div class="aviso ${errores.length ? "info" : "ok"}">
         <b>${validas.length} animales válidos</b> listos para importar ·
-        ${errores.length} filas con problema (no entrarán).</div>
-      ${errores.length ? `<div class="tarjeta" style="box-shadow:none"><h2>Filas con problema</h2>
-        <ul class="hist">${errores.slice(0, 60).map(x => `<li>${esc(x)}</li>`).join("")}</ul>
-        ${errores.length > 60 ? `<p class="sub">… y ${errores.length - 60} más.</p>` : ""}</div>` : ""}`;
+        ${errores.length} filas rechazadas (no entrarán) ·
+        ${advertencias.length} advertencias.</div>
+      ${observaciones.length ? `<div class="aviso info">${observaciones.map(esc).join("<br>")}</div>` : ""}
+      ${advertencias.length ? `<div class="tarjeta" style="box-shadow:none"><h2>Advertencias</h2>
+        <ul class="hist">${advertencias.slice(0, 60).map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
+      ${errores.length ? `<div class="tarjeta" style="box-shadow:none"><h2>Filas rechazadas</h2>
+        <ul class="hist">${errores.slice(0, 60).map(e => `<li>${esc(txtErr(e))}</li>`).join("")}</ul>
+        ${errores.length > 60 ? `<p class="sub">… y ${errores.length - 60} más (todas están en el reporte descargable).</p>` : ""}
+        <p style="margin-top:.6rem"><button class="btn sec" type="button" id="btn-reporte-errores">Descargar reporte de filas rechazadas (CSV)</button></p>
+        <p class="sub">Corrija esas filas en su archivo y vuelva a importarlo: las válidas ya incorporadas se reportarán como existentes, sin duplicarse.</p></div>` : ""}`;
+    const btnRep = $("btn-reporte-errores");
+    if(btnRep) btnRep.addEventListener("click", () => {
+      const q = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+      const csv = ["fila,arete,campo,causa",
+        ...impErrores.map(e => [e.fila, e.arete, e.campo, e.causa].map(q).join(","))].join("\r\n");
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" }));
+      a.download = "reporte-filas-rechazadas.csv"; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    });
     if(validas.length){
       $("imp-fase2-texto").textContent =
         `Se creará la carga «${impArchivo}» con ${validas.length} animales. Podrá deshacerla después desde la pestaña Cargas.`;
+      $("btn-confirmar-carga").textContent = `Incorporar únicamente filas válidas (${validas.length})`;
       $("imp-fase2").classList.remove("oculto");
     }
   }catch(ex){
@@ -771,7 +947,10 @@ $("btn-confirmar-carga").addEventListener("click", async () => {
     for(const f of impFilasValidas) f.rodeo_id = await resolverRodeo(f.rodeo_nombre);
     const filas = impFilasValidas.map(f => ({
       org_id: miOrg.id, arete: f.arete, nombre: f.nombre, sexo: f.sexo,
-      categoria: f.categoria, fecha_nacimiento: f.fecha_nacimiento, raza: f.raza,
+      categoria: f.categoria, categoria_pedigri: f.categoria_pedigri,
+      fecha_nacimiento: f.fecha_nacimiento, anio_nacimiento: f.anio_nacimiento,
+      raza: f.raza, rp_origen: f.rp_origen, registro_asociacion: f.registro_asociacion,
+      padre: f.padre, madre: f.madre,
       rodeo_id: f.rodeo_id, estado_existencia: f.estado_existencia, carga_id: carga.id
     }));
     const insertados = [];
@@ -781,14 +960,15 @@ $("btn-confirmar-carga").addEventListener("click", async () => {
       if(e2) throw e2;
       insertados.push(...ins);
     }
-    await sb.from("historial").insert({ org_id: miOrg.id, animal_id: null, accion: "carga",
-      motivo: `Carga ${impArchivo}`, detalle: { carga_id: carga.id, insertados: filas.length } });
-    // Trazabilidad por animal: la ficha de cada uno muestra que llegó en esta carga.
+    await registrarEvento(null, "carga", `Carga ${impArchivo}`,
+      { carga_id: carga.id, insertados: filas.length, fuente: "carga" });
+    // Trazabilidad por animal: el kardex de cada uno muestra que llegó en esta carga.
     for(let i = 0; i < insertados.length; i += 200){
       const { error: e3 } = await sb.from("historial").insert(
         insertados.slice(i, i + 200).map(a => ({
           org_id: miOrg.id, animal_id: a.id, accion: "carga",
-          motivo: `Carga ${impArchivo}`, detalle: { carga_id: carga.id }
+          autor_email: usuario ? (usuario.email || null) : null,
+          motivo: `Carga ${impArchivo}`, detalle: { carga_id: carga.id, fuente: "carga" }
         })));
       if(e3) throw e3;
     }
@@ -798,7 +978,10 @@ $("btn-confirmar-carga").addEventListener("click", async () => {
     await cargarTodo(); irA("animales");
   }catch(ex){
     aviso("La importación falló: " + (ex.message || ex), "error");
-  }finally{ btn.disabled = false; btn.textContent = "Confirmar e importar"; }
+  }finally{ btn.disabled = false;
+    btn.textContent = impFilasValidas.length
+      ? `Incorporar únicamente filas válidas (${impFilasValidas.length})`
+      : "Incorporar únicamente filas válidas"; }
 });
 
 /* ---------------- Cargas y deshacer (D62) ---------------- */
@@ -816,16 +999,42 @@ async function renderCargas(){
 $("tabla-cargas").addEventListener("click", async e => {
   const b = e.target.closest("button[data-deshacer]"); if(!b) return;
   const cargaId = b.dataset.deshacer;
-  const motivo = prompt("Deshacer esta carga retira todos sus animales del inventario (quedan en el historial).\nMotivo:");
+  const motivo = prompt("Deshacer esta carga retira todos sus animales del inventario (quedan en el kardex de cada uno).\nMotivo:");
   if(motivo === null) return;
   if(!motivo.trim()){ aviso("Para deshacer una carga se necesita un motivo.", "error"); return; }
+  // Reversión condicionada (S1-D / S1-CA06): solo se deshace si ningún
+  // animal de la carga tuvo cambios posteriores. Si los tuvo, se
+  // informa y se bloquea la reversión, sin perder esos cambios.
+  const deLaCarga = animales.filter(a => a.carga_id === cargaId && !a.eliminado);
+  const ids = deLaCarga.map(a => a.id);
+  if(ids.length){
+    const { data: posteriores, error: ePrev } = await sb.from("historial")
+      .select("animal_id").in("animal_id", ids)
+      .in("accion", ["edicion", "eliminacion", "comentario"]);
+    if(ePrev){ aviso("No se pudo verificar la carga: " + ePrev.message, "error"); return; }
+    if(posteriores && posteriores.length){
+      const afectados = [...new Set(posteriores.map(p => p.animal_id))]
+        .map(id => { const a = deLaCarga.find(x => x.id === id); return a ? a.arete : id; });
+      aviso(`No se deshizo la carga: ${afectados.length} animal(es) tuvieron cambios posteriores (${afectados.slice(0, 8).join(", ")}${afectados.length > 8 ? "…" : ""}). La reversión se bloquea para no perderlos (S1-CA06).`, "error");
+      return;
+    }
+  }
   const { error } = await sb.from("animales")
     .update({ eliminado: true }).eq("carga_id", cargaId).eq("eliminado", false);
   if(error){ aviso("No se pudo deshacer: " + error.message, "error"); return; }
   await sb.from("cargas").update({ estado: "deshecha" }).eq("id", cargaId);
-  await sb.from("historial").insert({ org_id: miOrg.id, animal_id: null,
-    accion: "deshacer_carga", motivo: motivo.trim(), detalle: { carga_id: cargaId } });
-  aviso("Carga deshecha. Los animales quedaron retirados y el hecho registrado.", "ok");
+  // El evento queda en el kardex de CADA animal retirado y en el global.
+  for(let i = 0; i < ids.length; i += 200){
+    await sb.from("historial").insert(
+      ids.slice(i, i + 200).map(id => ({
+        org_id: miOrg.id, animal_id: id, accion: "deshacer_carga",
+        autor_email: usuario ? (usuario.email || null) : null,
+        motivo: motivo.trim(), detalle: { carga_id: cargaId, fuente: "carga" }
+      })));
+  }
+  await registrarEvento(null, "deshacer_carga", motivo.trim(),
+    { carga_id: cargaId, animales: ids.length, fuente: "carga" });
+  aviso("Carga deshecha. Los animales quedaron retirados y la reversión registrada en el kardex de cada uno.", "ok");
   await cargarTodo();
 });
 
