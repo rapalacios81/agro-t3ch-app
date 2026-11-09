@@ -334,7 +334,7 @@ async function iniciar(){
   else mostrar("vista-auth");
   sb.auth.onAuthStateChange(async (_e, session) => {
     if(session && !usuario){ usuario = session.user; await entrar(); }
-    if(!session){ usuario = null; miOrg = null; mostrar("vista-auth"); }
+    if(!session){ usuario = null; miOrg = null; reiniciarEstado(); mostrar("vista-auth"); }
   });
 }
 
@@ -381,6 +381,18 @@ $("btn-salir").addEventListener("click", async () => { await sb.auth.signOut(); 
 $("org-salir").addEventListener("click", async () => { await sb.auth.signOut(); });
 
 /* ---------------- Organización ---------------- */
+function reiniciarEstado(){
+  // Higiene entre sesiones: ninguna vista puede conservar datos
+  // en memoria de un usuario u organización anterior.
+  animales = []; rodeos = []; animalActual = null;
+  $("ficha-datos").innerHTML = ""; $("ficha-historial").innerHTML = "";
+  $("ficha-titulo").textContent = "Ficha";
+  $("ficha-foto").classList.add("oculto"); $("ficha-foto").removeAttribute("src");
+  $("form-animal").classList.add("oculto");
+  $("buscar").value = ""; $("org-nombre").value = "";
+  irA("panel");
+}
+
 async function entrar(){
   const { data: perfil, error } = await sb.from("profiles")
     .select("org_id, email").eq("id", usuario.id).maybeSingle();
@@ -392,6 +404,7 @@ async function entrar(){
   $("top-org").textContent = "· " + (org ? org.nombre : "");
   $("top-user").textContent = usuario.email || "";
   mostrar("vista-app");
+  reiniciarEstado();
   await cargarTodo();
 }
 
@@ -759,12 +772,24 @@ $("btn-confirmar-carga").addEventListener("click", async () => {
       categoria: f.categoria, fecha_nacimiento: f.fecha_nacimiento, raza: f.raza,
       rodeo_id: f.rodeo_id, estado_existencia: f.estado_existencia, carga_id: carga.id
     }));
+    const insertados = [];
     for(let i = 0; i < filas.length; i += 200){
-      const { error: e2 } = await sb.from("animales").insert(filas.slice(i, i + 200));
+      const { data: ins, error: e2 } = await sb.from("animales")
+        .insert(filas.slice(i, i + 200)).select("id");
       if(e2) throw e2;
+      insertados.push(...ins);
     }
     await sb.from("historial").insert({ org_id: miOrg.id, animal_id: null, accion: "carga",
       motivo: `Carga ${impArchivo}`, detalle: { carga_id: carga.id, insertados: filas.length } });
+    // Trazabilidad por animal: la ficha de cada uno muestra que llegó en esta carga.
+    for(let i = 0; i < insertados.length; i += 200){
+      const { error: e3 } = await sb.from("historial").insert(
+        insertados.slice(i, i + 200).map(a => ({
+          org_id: miOrg.id, animal_id: a.id, accion: "carga",
+          motivo: `Carga ${impArchivo}`, detalle: { carga_id: carga.id }
+        })));
+      if(e3) throw e3;
+    }
     aviso(`Carga completa: ${filas.length} animales importados.`, "ok");
     impFilasValidas = []; $("input-excel").value = "";
     $("imp-resumen").innerHTML = ""; $("imp-fase2").classList.add("oculto");
