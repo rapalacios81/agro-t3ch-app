@@ -123,6 +123,8 @@
         <input id="auth-pass" type="password" required autocomplete="current-password" placeholder="••••••••"></div>
       <button class="btn" id="auth-btn" type="submit" style="width:100%">Entrar</button>
     </form>
+    <p class="sub" style="text-align:center; margin:.9rem 0 .4rem">— o —</p>
+    <button class="btn sec" id="btn-google" type="button" style="width:100%">Continuar con Google</button>
     <p class="alternar"><span id="auth-pregunta">¿No tiene cuenta?</span>
       <a id="auth-cambiar">Crear una cuenta</a></p>
   </div>
@@ -422,6 +424,18 @@ $("form-auth").addEventListener("submit", async e => {
 
 $("btn-salir").addEventListener("click", async () => { await sb.auth.signOut(); });
 $("org-salir").addEventListener("click", async () => { await sb.auth.signOut(); });
+
+/* Ingreso con Google (OAuth de Supabase): al volver, la sesión llega
+   por la URL y el arranque normal (getSession / onAuthStateChange)
+   lleva al Panel o a crear la organización, igual que con correo. */
+$("btn-google").addEventListener("click", async () => {
+  const err = $("auth-error"); err.classList.add("oculto");
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: window.location.origin + window.location.pathname }
+  });
+  if(error){ err.textContent = "No fue posible entrar con Google: " + error.message; err.classList.remove("oculto"); }
+});
 
 /* ---------------- Organización ---------------- */
 function reiniciarEstado(){
