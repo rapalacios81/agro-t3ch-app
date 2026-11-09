@@ -390,7 +390,9 @@ function reiniciarEstado(){
   $("ficha-foto").classList.add("oculto"); $("ficha-foto").removeAttribute("src");
   $("form-animal").classList.add("oculto");
   $("buscar").value = ""; $("org-nombre").value = "";
+  $("tabla-animales").innerHTML = ""; $("tabla-cargas").innerHTML = "";
   irA("panel");
+  renderPanel(); renderAnimales(); // primer pintado ya en ceros, sin esperar la red
 }
 
 async function entrar(){
