@@ -220,6 +220,16 @@
           <input type="file" id="input-foto" accept="image/*" class="oculto">
           <button class="btn peligro" id="btn-eliminar">Eliminar</button>
         </div>
+        <div id="eliminar-form" class="oculto" style="margin-top:.8rem">
+          <div class="fila">
+            <div class="campo" style="flex:3"><label for="eliminar-motivo">Motivo de la eliminación *</label>
+              <input id="eliminar-motivo" placeholder="Queda registrado en el kardex del animal"></div>
+            <div style="flex:0; min-width:190px; align-self:end">
+              <button class="btn peligro" type="button" id="btn-confirmar-eliminar" style="width:100%">Confirmar eliminación</button></div>
+            <div style="flex:0; min-width:110px; align-self:end">
+              <button class="btn sec" type="button" id="btn-cancelar-eliminar" style="width:100%">Cancelar</button></div>
+          </div>
+        </div>
       </div>
       <form class="tarjeta oculto" id="form-animal">
         <h2 id="form-animal-titulo">Editar animal</h2>
@@ -305,6 +315,17 @@
       <h1>Cargas de importación</h1>
       <p class="sub">Cada carga queda registrada. Si una carga entró mal, puede deshacerse: los animales de esa carga se retiran y todo queda en el kardex de cada uno. Si algún animal de la carga ya tuvo cambios posteriores, la reversión se bloquea para no perderlos.</p>
       <div class="tarjeta">
+        <div id="deshacer-form" class="oculto" style="margin-bottom:1rem">
+          <div class="fila">
+            <div class="campo" style="flex:3"><label for="deshacer-motivo">Motivo para deshacer la carga seleccionada *</label>
+              <input id="deshacer-motivo" placeholder="Ej.: archivo cargado con errores"></div>
+            <div style="flex:0; min-width:180px; align-self:end">
+              <button class="btn peligro" type="button" id="btn-confirmar-deshacer" style="width:100%">Confirmar deshacer</button></div>
+            <div style="flex:0; min-width:110px; align-self:end">
+              <button class="btn sec" type="button" id="btn-cancelar-deshacer" style="width:100%">Cancelar</button></div>
+          </div>
+          <p class="sub" id="deshacer-detalle"></p>
+        </div>
         <div style="overflow-x:auto">
         <table>
           <thead><tr><th>Fecha</th><th>Archivo</th><th>Animales</th><th>Estado</th><th></th></tr></thead>
@@ -529,6 +550,7 @@ function abrirFicha(id){
   animalActual = id ? animales.find(a => a.id === id) : null;
   irA("ficha");
   $("form-animal").classList.add("oculto");
+  $("eliminar-form").classList.add("oculto");
   if(!animalActual){
     $("ficha-titulo").textContent = "Nuevo animal";
     $("ficha-datos").innerHTML = '<p class="sub">Complete los datos y guarde. Solo arete y nombre son obligatorios.</p>';
@@ -719,16 +741,24 @@ $("form-animal").addEventListener("submit", async e => {
   }
 });
 
-/* ---------------- Eliminar (lógico, con motivo) ---------------- */
-$("btn-eliminar").addEventListener("click", async () => {
+/* ---------------- Eliminar (lógico, con motivo en la página) ---------------- */
+$("btn-eliminar").addEventListener("click", () => {
   if(!animalActual) return;
-  const motivo = prompt(`Eliminar a ${animalActual.arete} · ${animalActual.nombre}.\nQueda en el historial, no se borra el registro.\nMotivo de la eliminación:`);
-  if(motivo === null) return;
-  if(!motivo.trim()){ aviso("La eliminación necesita un motivo.", "error"); return; }
+  $("eliminar-motivo").value = "";
+  $("eliminar-form").classList.remove("oculto");
+  $("eliminar-motivo").focus();
+});
+$("btn-cancelar-eliminar").addEventListener("click", () =>
+  $("eliminar-form").classList.add("oculto"));
+$("btn-confirmar-eliminar").addEventListener("click", async () => {
+  if(!animalActual) return;
+  const motivo = $("eliminar-motivo").value.trim();
+  if(!motivo){ aviso("La eliminación necesita un motivo.", "error"); return; }
   const { error } = await sb.from("animales")
     .update({ eliminado: true }).eq("id", animalActual.id);
   if(error){ aviso("No se pudo eliminar: " + error.message, "error"); return; }
-  await registrarEvento(animalActual.id, "eliminacion", motivo.trim(), { fuente: "manual" });
+  await registrarEvento(animalActual.id, "eliminacion", motivo, { fuente: "manual" });
+  $("eliminar-form").classList.add("oculto");
   aviso("Animal eliminado. La eliminación quedó en su kardex, con motivo, fecha y autor.", "ok");
   await cargarTodo(); irA("animales");
 });
@@ -988,6 +1018,7 @@ $("btn-confirmar-carga").addEventListener("click", async () => {
 async function renderCargas(){
   const { data } = await sb.from("cargas").select("*").order("created_at", { ascending: false });
   const lista = data || [];
+  window._cargasActuales = lista;
   $("tabla-cargas").innerHTML = lista.map(c => `
     <tr><td>${new Date(c.created_at).toLocaleString("es-CO")}</td>
       <td>${esc(c.archivo || "—")}</td><td>${c.insertados}</td>
@@ -996,11 +1027,27 @@ async function renderCargas(){
         ? `<button class="btn sec" data-deshacer="${c.id}">Deshacer</button>` : ""}</td></tr>`).join("");
   $("cargas-vacio").classList.toggle("oculto", lista.length > 0);
 }
-$("tabla-cargas").addEventListener("click", async e => {
+/* El motivo se pide en la propia página (sin diálogos del navegador):
+   se elige la carga, se escribe el motivo y se confirma. */
+let cargaADeshacer = null;
+$("tabla-cargas").addEventListener("click", e => {
   const b = e.target.closest("button[data-deshacer]"); if(!b) return;
-  const cargaId = b.dataset.deshacer;
-  const motivo = prompt("Deshacer esta carga retira todos sus animales del inventario (quedan en el kardex de cada uno).\nMotivo:");
-  if(motivo === null) return;
+  cargaADeshacer = b.dataset.deshacer;
+  const c = (window._cargasActuales || []).find(x => x.id === cargaADeshacer);
+  $("deshacer-detalle").textContent = c
+    ? `Se deshará la carga «${c.archivo || "sin nombre"}» (${c.insertados} animales). Los animales se retiran del inventario y la reversión queda en el kardex de cada uno.`
+    : "Se deshará la carga seleccionada.";
+  $("deshacer-motivo").value = "";
+  $("deshacer-form").classList.remove("oculto");
+  $("deshacer-motivo").focus();
+});
+$("btn-cancelar-deshacer").addEventListener("click", () => {
+  cargaADeshacer = null; $("deshacer-form").classList.add("oculto");
+});
+$("btn-confirmar-deshacer").addEventListener("click", async () => {
+  if(!cargaADeshacer) return;
+  const cargaId = cargaADeshacer;
+  const motivo = $("deshacer-motivo").value;
   if(!motivo.trim()){ aviso("Para deshacer una carga se necesita un motivo.", "error"); return; }
   // Reversión condicionada (S1-D / S1-CA06): solo se deshace si ningún
   // animal de la carga tuvo cambios posteriores. Si los tuvo, se
@@ -1034,6 +1081,7 @@ $("tabla-cargas").addEventListener("click", async e => {
   }
   await registrarEvento(null, "deshacer_carga", motivo.trim(),
     { carga_id: cargaId, animales: ids.length, fuente: "carga" });
+  cargaADeshacer = null; $("deshacer-form").classList.add("oculto");
   aviso("Carga deshecha. Los animales quedaron retirados y la reversión registrada en el kardex de cada uno.", "ok");
   await cargarTodo();
 });
