@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Agro-T3ch — Inventario de animales</title>
+<meta name="description" content="Agro-T3ch: inventario de animales para fincas lecheras. Multicliente, con login e historial completo.">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#3E4A3D">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  :root{
+    --hueso:#FAF8F3; --papel:#FFFFFF; --piedra:#E9E5DC; --grafito:#2B2B28;
+    --gris:#6E6A61; --salvia:#66785C; --salvia-osc:#3E4A3D; --ambar:#B97F26;
+    --rojo:#A33B32; --borde:#DAD4C7; --sombra:0 1px 3px rgba(43,43,40,.10);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+       background:var(--hueso); color:var(--grafito); line-height:1.45;}
+  button{font:inherit; cursor:pointer;}
+  input,select,textarea{font:inherit; padding:.55rem .7rem; border:1px solid var(--borde);
+       border-radius:.5rem; background:var(--papel); width:100%; color:var(--grafito);}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--salvia); outline-offset:1px;}
+  label{font-size:.82rem; font-weight:600; color:var(--gris); display:block; margin-bottom:.25rem;}
+  .oculto{display:none !important;}
+
+  /* ---------- Cabecera ---------- */
+  header.top{background:var(--salvia-osc); color:#F2EFE6; padding:.7rem 1rem;
+       display:flex; align-items:center; gap:.7rem; position:sticky; top:0; z-index:20;}
+  header.top .logo{font-weight:800; letter-spacing:.02em; font-size:1.05rem;}
+  header.top .logo b{color:#C9D6BE;}
+  header.top .org{font-size:.8rem; opacity:.85; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  header.top .sp{flex:1;}
+  header.top button{background:transparent; border:1px solid rgba(255,255,255,.35); color:#F2EFE6;
+       border-radius:.5rem; padding:.35rem .6rem; font-size:.8rem;}
+
+  nav.tabs{display:flex; gap:.4rem; padding:.6rem 1rem 0; flex-wrap:wrap;}
+  nav.tabs button{border:1px solid var(--borde); background:var(--papel); border-radius:2rem;
+       padding:.45rem .95rem; font-weight:600; color:var(--gris);}
+  nav.tabs button.activo{background:var(--salvia-osc); color:#F2EFE6; border-color:var(--salvia-osc);}
+
+  main{max-width:1060px; margin:0 auto; padding:1rem;}
+  .tarjeta{background:var(--papel); border:1px solid var(--borde); border-radius:.9rem;
+       padding:1rem 1.1rem; box-shadow:var(--sombra); margin-bottom:1rem;}
+  h1{font-size:1.35rem; margin-bottom:.4rem;}
+  h2{font-size:1.08rem; margin-bottom:.6rem;}
+  .sub{color:var(--gris); font-size:.9rem; margin-bottom:1rem;}
+  .fila{display:flex; gap:.7rem; flex-wrap:wrap;}
+  .fila > *{flex:1; min-width:150px;}
+  .campo{margin-bottom:.8rem;}
+
+  .btn{background:var(--salvia-osc); color:#F5F2EA; border:none; border-radius:.6rem;
+       padding:.65rem 1.1rem; font-weight:700;}
+  .btn:disabled{opacity:.5; cursor:default;}
+  .btn.sec{background:var(--papel); color:var(--grafito); border:1px solid var(--borde);}
+  .btn.peligro{background:var(--rojo); color:#FFF;}
+  .btn.ambar{background:var(--ambar); color:#FFF;}
+
+  .kpi-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:.8rem;}
+  .kpi{background:var(--papel); border:1px solid var(--borde); border-radius:.9rem; padding:.9rem 1rem; box-shadow:var(--sombra);}
+  .kpi .n{font-size:1.7rem; font-weight:800;}
+  .kpi .t{font-size:.8rem; color:var(--gris); font-weight:600; text-transform:uppercase; letter-spacing:.04em;}
+
+  table{width:100%; border-collapse:collapse; font-size:.92rem;}
+  th,td{text-align:left; padding:.5rem .55rem; border-bottom:1px solid var(--piedra); vertical-align:top;}
+  th{font-size:.75rem; text-transform:uppercase; letter-spacing:.05em; color:var(--gris);}
+  tr.click{cursor:pointer;}
+  tr.click:hover{background:#F4F1E8;}
+
+  .chip{display:inline-block; padding:.12rem .55rem; border-radius:2rem; font-size:.75rem;
+        font-weight:700; background:var(--piedra); color:var(--grafito);}
+  .chip.verde{background:#DFE7D8; color:#3E4A3D;}
+  .chip.ambar{background:#F2E3C6; color:#7A5510;}
+  .chip.rojo{background:#F0D7D3; color:#7C2A23;}
+
+  .aviso{border-radius:.7rem; padding:.8rem 1rem; font-size:.9rem; margin-bottom:1rem;}
+  .aviso.error{background:#F7E4E1; border:1px solid #D9A79F; color:#6E241C;}
+  .aviso.ok{background:#E4EBDC; border:1px solid #A9BC97; color:#33402C;}
+  .aviso.info{background:#EFEAD9; border:1px solid #D5C48F; color:#5C4A12;}
+
+  .centro{max-width:430px; margin:6vh auto 0; padding:0 1rem;}
+  .logo-grande{font-size:2rem; font-weight:800; text-align:center; margin-bottom:.2rem;}
+  .logo-grande b{color:var(--salvia);}
+  .tagline{text-align:center; color:var(--gris); margin-bottom:1.4rem; font-size:.92rem;}
+  .alternar{text-align:center; font-size:.88rem; margin-top:.8rem;}
+  .alternar a{color:var(--salvia-osc); font-weight:700; cursor:pointer;}
+
+  .hist{font-size:.88rem;}
+  .hist li{margin-bottom:.45rem; list-style:none; border-left:3px solid var(--piedra); padding-left:.6rem;}
+  .hist .f{color:var(--gris); font-size:.78rem;}
+  .foto{width:100%; max-height:280px; object-fit:cover; border-radius:.7rem; border:1px solid var(--borde);}
+  .vacio{color:var(--gris); text-align:center; padding:1.6rem 0; font-size:.95rem;}
+  footer{color:var(--gris); font-size:.78rem; text-align:center; padding:1.2rem 1rem 2rem;}
+  @media (max-width:640px){ th:nth-child(5), td:nth-child(5){display:none;} }
+</style>
+</head>
+<body>
+
+<!-- ================= SIN CONFIGURAR ================= -->
+<section id="vista-config" class="centro oculto">
+  <div class="logo-grande">AGRO-<b>T3CH</b></div>
+  <p class="tagline">Falta conectar la base de datos</p>
+  <div class="tarjeta">
+    <p style="font-size:.92rem">Esta copia de la app aún no tiene las llaves de Supabase.
+    El dueño del proyecto debe abrir <b>config.js</b> y poner la <b>URL del proyecto</b> y la
+    <b>clave pública (anon key)</b>. La guía paso a paso está en
+    <b>README-despliegue.md</b>.</p>
+  </div>
+</section>
+
+<!-- ================= LOGIN / REGISTRO ================= -->
+<section id="vista-auth" class="centro oculto">
+  <div class="logo-grande">AGRO-<b>T3CH</b></div>
+  <p class="tagline">El software del hato lechero que arranca por su inventario</p>
+  <div class="tarjeta">
+    <h2 id="auth-titulo">Iniciar sesión</h2>
+    <div id="auth-error" class="aviso error oculto"></div>
+    <div id="auth-info" class="aviso info oculto"></div>
+    <form id="form-auth">
+      <div class="campo"><label for="auth-email">Correo</label>
+        <input id="auth-email" type="email" required autocomplete="email" placeholder="usted@finca.co"></div>
+      <div class="campo"><label for="auth-pass">Contraseña</label>
+        <input id="auth-pass" type="password" required autocomplete="current-password" placeholder="••••••••"></div>
+      <button class="btn" id="auth-btn" type="submit" style="width:100%">Entrar</button>
+    </form>
+    <p class="alternar"><span id="auth-pregunta">¿No tiene cuenta?</span>
+      <a id="auth-cambiar">Crear una cuenta</a></p>
+  </div>
+</section>
+
+<!-- ================= CREAR ORGANIZACIÓN ================= -->
+<section id="vista-org" class="centro oculto">
+  <div class="logo-grande">AGRO-<b>T3CH</b></div>
+  <p class="tagline">Un último paso: su organización</p>
+  <div class="tarjeta">
+    <h2>Crear mi organización</h2>
+    <p class="sub">Cada organización es un cliente aislado: sus animales solo los ve su gente.
+    Puede ser su empresa ganadera o su fundación.</p>
+    <div id="org-error" class="aviso error oculto"></div>
+    <form id="form-org">
+      <div class="campo"><label for="org-nombre">Nombre de la organización</label>
+        <input id="org-nombre" required placeholder="Ej.: Ganadería La Pedregosa"></div>
+      <button class="btn" type="submit" style="width:100%">Crear y entrar</button>
+    </form>
+    <p class="alternar"><a id="org-salir">Salir y usar otra cuenta</a></p>
+  </div>
+</section>
+
+<!-- ================= APP ================= -->
+<div id="vista-app" class="oculto">
+  <header class="top">
+    <span class="logo">AGRO-<b>T3CH</b></span>
+    <span class="org" id="top-org"></span>
+    <span class="sp"></span>
+    <span class="org" id="top-user"></span>
+    <button id="btn-salir">Salir</button>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button data-vista="panel" class="activo">Panel</button>
+    <button data-vista="animales">Animales</button>
+    <button data-vista="importar">Importar</button>
+    <button data-vista="cargas">Cargas</button>
+  </nav>
+
+  <main>
+    <div id="app-aviso" class="aviso oculto"></div>
+
+    <!-- ===== PANEL ===== -->
+    <section id="v-panel">
+      <h1>Panel del hato</h1>
+      <p class="sub">Cifras calculadas en vivo desde su inventario. Nada se escribe a mano.</p>
+      <div class="kpi-grid" id="kpis"></div>
+      <div class="tarjeta" style="margin-top:1rem">
+        <h2>Animales por categoría</h2>
+        <div id="panel-categorias"></div>
+      </div>
+      <div class="tarjeta">
+        <h2>Animales por rodeo</h2>
+        <div id="panel-rodeos"></div>
+      </div>
+    </section>
+
+    <!-- ===== ANIMALES ===== -->
+    <section id="v-animales" class="oculto">
+      <h1>Animales</h1>
+      <p class="sub">Toque un animal para ver su ficha completa y su historial.</p>
+      <div class="tarjeta">
+        <div class="fila">
+          <div style="flex:2"><label for="buscar">Buscar por arete o nombre</label>
+            <input id="buscar" placeholder="Ej.: LP-001 o Estrella"></div>
+          <div><label for="filtro-cat">Categoría</label><select id="filtro-cat"><option value="">Todas</option></select></div>
+          <div><label for="filtro-rodeo">Rodeo</label><select id="filtro-rodeo"><option value="">Todos</option></select></div>
+          <div style="flex:0; min-width:130px; align-self:end">
+            <button class="btn" id="btn-nuevo" style="width:100%">+ Nuevo animal</button></div>
+        </div>
+      </div>
+      <div class="tarjeta">
+        <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Arete</th><th>Nombre</th><th>Sexo</th><th>Categoría</th><th>Nacimiento</th><th>Rodeo</th><th>Estado</th></tr></thead>
+          <tbody id="tabla-animales"></tbody>
+        </table>
+        </div>
+        <p class="vacio" id="animales-vacio">Aún no hay animales. Importe su inventario o cree el primero.</p>
+      </div>
+    </section>
+
+    <!-- ===== FICHA ===== -->
+    <section id="v-ficha" class="oculto">
+      <p style="margin-bottom:.7rem"><a id="ficha-volver" style="color:var(--salvia-osc); font-weight:700; cursor:pointer">← Volver a animales</a></p>
+      <div class="tarjeta">
+        <h1 id="ficha-titulo">Ficha</h1>
+        <img id="ficha-foto" class="foto oculto" alt="Foto del animal">
+        <div id="ficha-datos" style="margin-top:.6rem"></div>
+        <div class="fila" style="margin-top:1rem">
+          <button class="btn sec" id="btn-editar">Editar</button>
+          <button class="btn sec" id="btn-foto">Subir foto</button>
+          <input type="file" id="input-foto" accept="image/*" class="oculto">
+          <button class="btn peligro" id="btn-eliminar">Eliminar</button>
+        </div>
+      </div>
+      <form class="tarjeta oculto" id="form-animal">
+        <h2 id="form-animal-titulo">Editar animal</h2>
+        <div class="fila">
+          <div class="campo"><label>Arete *</label><input id="fa-arete" required></div>
+          <div class="campo"><label>Nombre *</label><input id="fa-nombre" required></div>
+        </div>
+        <div class="fila">
+          <div class="campo"><label>Sexo</label><select id="fa-sexo">
+            <option value="">—</option><option>Hembra</option><option>Macho</option></select></div>
+          <div class="campo"><label>Categoría</label><input id="fa-categoria" list="dl-categorias" placeholder="Vaca, Novilla, Ternera…">
+            <datalist id="dl-categorias"></datalist></div>
+          <div class="campo"><label>Fecha de nacimiento</label><input id="fa-nacimiento" type="date"></div>
+        </div>
+        <div class="fila">
+          <div class="campo"><label>Raza / cruza</label><input id="fa-raza" placeholder="Ej.: Ayrshire"></div>
+          <div class="campo"><label>Rodeo (escriba para crear uno nuevo)</label>
+            <input id="fa-rodeo" list="dl-rodeos" placeholder="Ej.: La Pedregosa"><datalist id="dl-rodeos"></datalist></div>
+          <div class="campo"><label>Estado</label><select id="fa-estado">
+            <option>Activo</option><option>Vendido</option><option>Muerto</option><option>Baja</option></select></div>
+        </div>
+        <div class="fila">
+          <div class="campo"><label>Estado reproductivo</label><input id="fa-reproductivo" placeholder="Vacía, Servida, Preñada…"></div>
+          <div class="campo"><label>Notas</label><input id="fa-notas"></div>
+        </div>
+        <div class="campo" id="fa-motivo-wrap"><label>Motivo del cambio *</label>
+          <input id="fa-motivo" placeholder="Ej.: corrección del arete leído en campo"></div>
+        <div class="fila">
+          <button class="btn" type="submit">Guardar</button>
+          <button class="btn sec" type="button" id="fa-cancelar">Cancelar</button>
+        </div>
+      </form>
+      <div class="tarjeta">
+        <h2>Historial del animal</h2>
+        <ul class="hist" id="ficha-historial"></ul>
+        <p class="vacio oculto" id="historial-vacio">Sin movimientos registrados.</p>
+      </div>
+    </section>
+
+    <!-- ===== IMPORTAR ===== -->
+    <section id="v-importar" class="oculto">
+      <h1>Importar inventario desde Excel</h1>
+      <p class="sub">Dos fases: primero se valida todo el archivo y usted revisa; solo al confirmar se guarda. Nada entra sin su visto bueno.</p>
+      <div class="tarjeta">
+        <h2>Fase 1 · Cargar y validar</h2>
+        <p class="sub">Archivo .xlsx o .csv con las columnas de la plantilla:
+          <b>arete, nombre, sexo, categoria, fecha_nacimiento, raza, rodeo, estado</b>. Solo arete y nombre son obligatorios.</p>
+        <div class="campo"><label for="input-excel">Archivo</label>
+          <input type="file" id="input-excel" accept=".xlsx,.xls,.csv"></div>
+        <div id="imp-resumen"></div>
+      </div>
+      <div class="tarjeta oculto" id="imp-fase2">
+        <h2>Fase 2 · Confirmar la carga</h2>
+        <p class="sub" id="imp-fase2-texto"></p>
+        <button class="btn" id="btn-confirmar-carga">Confirmar e importar</button>
+        <button class="btn sec" id="btn-cancelar-carga">Cancelar</button>
+      </div>
+    </section>
+
+    <!-- ===== CARGAS ===== -->
+    <section id="v-cargas" class="oculto">
+      <h1>Cargas de importación</h1>
+      <p class="sub">Cada carga queda registrada. Si una carga entró mal, puede deshacerse: los animales de esa carga se retiran y todo queda en el historial.</p>
+      <div class="tarjeta">
+        <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Fecha</th><th>Archivo</th><th>Animales</th><th>Estado</th><th></th></tr></thead>
+          <tbody id="tabla-cargas"></tbody>
+        </table>
+        </div>
+        <p class="vacio" id="cargas-vacio">Todavía no hay cargas registradas.</p>
+      </div>
+    </section>
+  </main>
+  <footer>Agro-T3ch · Sprint 1 — Inventario de animales · Los datos viven en la base de datos de su organización (Supabase), aislados por cliente.</footer>
+</div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+"use strict";
+/* ============================================================
+   Agro-T3ch · Sprint 1 — cliente web (PWA) contra Supabase
+   Multitenant: toda consulta la acota RLS en el servidor (S1-E).
+   ============================================================ */
+const CFG = window.AGROT3CH_CONFIG || {};
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtFecha = iso => { if(!iso) return "—"; const [y,m,d] = String(iso).slice(0,10).split("-"); return `${d}/${m}/${y}`; };
+
+let sb = null, usuario = null, miOrg = null;
+let animales = [], rodeos = [], animalActual = null, modoRegistro = false;
+let impFilasValidas = [], impArchivo = "";
+
+function aviso(texto, tipo="info"){
+  const a = $("app-aviso"); a.textContent = texto;
+  a.className = "aviso " + tipo; a.classList.remove("oculto");
+  setTimeout(()=>a.classList.add("oculto"), 6000);
+}
+function mostrar(id){
+  ["vista-config","vista-auth","vista-org","vista-app"].forEach(v => $(v).classList.toggle("oculto", v !== id));
+}
+
+/* ---------------- Arranque ---------------- */
+async function iniciar(){
+  if(!CFG.SUPABASE_URL || !CFG.SUPABASE_ANON_KEY || CFG.SUPABASE_URL.includes("TU-PROYECTO")){
+    mostrar("vista-config"); return;
+  }
+  sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
+  const { data } = await sb.auth.getSession();
+  if(data.session){ usuario = data.session.user; await entrar(); }
+  else mostrar("vista-auth");
+  sb.auth.onAuthStateChange(async (_e, session) => {
+    if(session && !usuario){ usuario = session.user; await entrar(); }
+    if(!session){ usuario = null; miOrg = null; mostrar("vista-auth"); }
+  });
+}
+
+/* ---------------- Autenticación ---------------- */
+$("auth-cambiar").addEventListener("click", () => {
+  modoRegistro = !modoRegistro;
+  $("auth-titulo").textContent = modoRegistro ? "Crear una cuenta" : "Iniciar sesión";
+  $("auth-btn").textContent = modoRegistro ? "Registrarme" : "Entrar";
+  $("auth-pregunta").textContent = modoRegistro ? "¿Ya tiene cuenta?" : "¿No tiene cuenta?";
+  $("auth-cambiar").textContent = modoRegistro ? "Iniciar sesión" : "Crear una cuenta";
+  $("auth-error").classList.add("oculto"); $("auth-info").classList.add("oculto");
+});
+
+$("form-auth").addEventListener("submit", async e => {
+  e.preventDefault();
+  const email = $("auth-email").value.trim(), pass = $("auth-pass").value;
+  const err = $("auth-error"), info = $("auth-info");
+  err.classList.add("oculto"); info.classList.add("oculto");
+  $("auth-btn").disabled = true;
+  try{
+    if(modoRegistro){
+      const { data, error } = await sb.auth.signUp({ email, password: pass });
+      if(error) throw error;
+      if(!data.session){
+        info.textContent = "Cuenta creada. Revise su correo y confirme la cuenta; luego inicie sesión.";
+        info.classList.remove("oculto"); modoRegistro = false;
+        $("auth-titulo").textContent = "Iniciar sesión"; $("auth-btn").textContent = "Entrar";
+        return;
+      }
+      usuario = data.user;
+    }else{
+      const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+      if(error) throw error;
+      usuario = data.user;
+    }
+    await entrar();
+  }catch(ex){
+    err.textContent = "No fue posible: " + (ex.message || ex);
+    err.classList.remove("oculto");
+  }finally{ $("auth-btn").disabled = false; }
+});
+
+$("btn-salir").addEventListener("click", async () => { await sb.auth.signOut(); });
+$("org-salir").addEventListener("click", async () => { await sb.auth.signOut(); });
+
+/* ---------------- Organización ---------------- */
+async function entrar(){
+  const { data: perfil, error } = await sb.from("profiles")
+    .select("org_id, email").eq("id", usuario.id).maybeSingle();
+  if(error){ console.error(error); }
+  if(!perfil){ mostrar("vista-org"); return; }
+  const { data: org } = await sb.from("organizations")
+    .select("id, nombre").eq("id", perfil.org_id).single();
+  miOrg = org;
+  $("top-org").textContent = "· " + (org ? org.nombre : "");
+  $("top-user").textContent = usuario.email || "";
+  mostrar("vista-app");
+  await cargarTodo();
+}
+
+$("form-org").addEventListener("submit", async e => {
+  e.preventDefault();
+  const nombre = $("org-nombre").value.trim();
+  const err = $("org-error"); err.classList.add("oculto");
+  const { data: org, error } = await sb.from("organizations")
+    .insert({ nombre, created_by: usuario.id }).select().single();
+  if(error){ err.textContent = "No se pudo crear: " + error.message; err.classList.remove("oculto"); return; }
+  const { error: e2 } = await sb.from("profiles")
+    .insert({ id: usuario.id, org_id: org.id, email: usuario.email });
+  if(e2){ err.textContent = "Organización creada pero el perfil falló: " + e2.message; err.classList.remove("oculto"); return; }
+  await entrar();
+});
+
+/* ---------------- Datos ---------------- */
+async function cargarTodo(){
+  const [ra, rr] = await Promise.all([
+    sb.from("animales").select("*, rodeos(nombre)").order("arete"),
+    sb.from("rodeos").select("*").order("nombre")
+  ]);
+  if(ra.error){ aviso("Error cargando animales: " + ra.error.message, "error"); return; }
+  animales = ra.data || []; rodeos = rr.data || [];
+  poblarFiltros(); renderPanel(); renderAnimales(); renderCargas();
+}
+
+function poblarFiltros(){
+  const cats = [...new Set(animales.filter(a=>!a.eliminado).map(a=>a.categoria).filter(Boolean))].sort();
+  $("filtro-cat").innerHTML = '<option value="">Todas</option>' + cats.map(c=>`<option>${esc(c)}</option>`).join("");
+  $("dl-categorias").innerHTML = cats.map(c=>`<option value="${esc(c)}">`).join("");
+  $("filtro-rodeo").innerHTML = '<option value="">Todos</option>' +
+    rodeos.map(r=>`<option value="${r.id}">${esc(r.nombre)}</option>`).join("");
+  $("dl-rodeos").innerHTML = rodeos.map(r=>`<option value="${esc(r.nombre)}">`).join("");
+}
+
+/* ---------------- Panel (cifras calculadas, nunca a mano) ---------------- */
+function renderPanel(){
+  const vivos = animales.filter(a => !a.eliminado && a.estado_existencia === "Activo");
+  const totalReg = animales.filter(a => !a.eliminado).length;
+  const hembras = vivos.filter(a => a.sexo === "Hembra").length;
+  const machos  = vivos.filter(a => a.sexo === "Macho").length;
+  $("kpis").innerHTML = [
+    [vivos.length, "Animales activos"], [totalReg, "Registrados (todos los estados)"],
+    [hembras, "Hembras activas"], [machos, "Machos activos"], [rodeos.length, "Rodeos"]
+  ].map(([n,t]) => `<div class="kpi"><div class="n">${n}</div><div class="t">${t}</div></div>`).join("");
+
+  const por = (fn) => { const m = new Map();
+    vivos.forEach(a => { const k = fn(a) || "Sin dato"; m.set(k, (m.get(k)||0)+1); });
+    return [...m.entries()].sort((x,y)=>y[1]-x[1]); };
+  const tabla = pares => pares.length
+    ? `<table><tbody>${pares.map(([k,v])=>`<tr><td>${esc(k)}</td><td style="text-align:right"><b>${v}</b></td></tr>`).join("")}</tbody></table>`
+    : '<p class="vacio">Sin datos todavía.</p>';
+  $("panel-categorias").innerHTML = tabla(por(a => a.categoria));
+  $("panel-rodeos").innerHTML = tabla(por(a => a.rodeos ? a.rodeos.nombre : null));
+}
+
+/* ---------------- Navegación ---------------- */
+function irA(vista){
+  ["panel","animales","ficha","importar","cargas"].forEach(v =>
+    $("v-" + v).classList.toggle("oculto", v !== vista));
+  document.querySelectorAll("#tabs button").forEach(b =>
+    b.classList.toggle("activo", b.dataset.vista === vista));
+  window.scrollTo({ top: 0 });
+}
+$("tabs").addEventListener("click", e => {
+  const b = e.target.closest("button"); if(b) irA(b.dataset.vista);
+});
+
+/* ---------------- Lista de animales ---------------- */
+function renderAnimales(){
+  const q = $("buscar").value.trim().toLowerCase();
+  const fc = $("filtro-cat").value, fr = $("filtro-rodeo").value;
+  const lista = animales.filter(a => !a.eliminado)
+    .filter(a => !q || a.arete.toLowerCase().includes(q) || a.nombre.toLowerCase().includes(q))
+    .filter(a => !fc || a.categoria === fc)
+    .filter(a => !fr || a.rodeo_id === fr);
+  const chip = est => est === "Activo" ? "verde" : (est === "Muerto" || est === "Baja") ? "rojo" : "ambar";
+  $("tabla-animales").innerHTML = lista.map(a => `
+    <tr class="click" data-id="${a.id}">
+      <td><b>${esc(a.arete)}</b></td><td>${esc(a.nombre)}</td><td>${esc(a.sexo || "—")}</td>
+      <td>${esc(a.categoria || "—")}</td><td>${fmtFecha(a.fecha_nacimiento)}</td>
+      <td>${esc(a.rodeos ? a.rodeos.nombre : "—")}</td>
+      <td><span class="chip ${chip(a.estado_existencia)}">${esc(a.estado_existencia)}</span></td>
+    </tr>`).join("");
+  $("animales-vacio").classList.toggle("oculto", lista.length > 0);
+}
+["buscar","filtro-cat","filtro-rodeo"].forEach(id =>
+  $(id).addEventListener("input", renderAnimales));
+$("tabla-animales").addEventListener("click", e => {
+  const tr = e.target.closest("tr[data-id]"); if(tr) abrirFicha(tr.dataset.id);
+});
+$("btn-nuevo").addEventListener("click", () => { abrirFicha(null); });
+
+/* ---------------- Ficha ---------------- */
+function abrirFicha(id){
+  animalActual = id ? animales.find(a => a.id === id) : null;
+  irA("ficha");
+  $("form-animal").classList.add("oculto");
+  if(!animalActual){
+    $("ficha-titulo").textContent = "Nuevo animal";
+    $("ficha-datos").innerHTML = '<p class="sub">Complete los datos y guarde. Solo arete y nombre son obligatorios.</p>';
+    $("ficha-foto").classList.add("oculto");
+    $("ficha-historial").innerHTML = ""; $("historial-vacio").classList.remove("oculto");
+    $("btn-eliminar").classList.add("oculto"); $("btn-foto").classList.add("oculto");
+    abrirFormulario(null);
+    return;
+  }
+  $("btn-eliminar").classList.remove("oculto"); $("btn-foto").classList.remove("oculto");
+  const a = animalActual;
+  $("ficha-titulo").textContent = `${a.arete} · ${a.nombre}`;
+  const campo = (t,v) => `<div style="min-width:140px; flex:1"><label>${t}</label><div>${esc(v || "—")}</div></div>`;
+  $("ficha-datos").innerHTML = `<div class="fila">
+    ${campo("Sexo", a.sexo)}${campo("Categoría", a.categoria)}${campo("Nacimiento", fmtFecha(a.fecha_nacimiento))}
+    ${campo("Raza / cruza", a.raza)}${campo("Rodeo", a.rodeos ? a.rodeos.nombre : null)}
+    ${campo("Estado", a.estado_existencia)}${campo("Estado reproductivo", a.estado_reproductivo)}
+    ${campo("Notas", a.notas)}</div>`;
+  cargarFoto(a); cargarHistorial(a.id);
+}
+
+async function cargarFoto(a){
+  const img = $("ficha-foto");
+  if(!a.foto_path){ img.classList.add("oculto"); img.removeAttribute("src"); return; }
+  const { data } = await sb.storage.from("fotos-animales").createSignedUrl(a.foto_path, 3600);
+  if(data && data.signedUrl){ img.src = data.signedUrl; img.classList.remove("oculto"); }
+  else img.classList.add("oculto");
+}
+
+async function cargarHistorial(animalId){
+  const { data } = await sb.from("historial")
+    .select("*").eq("animal_id", animalId).order("created_at", { ascending: false });
+  const items = data || [];
+  const nombres = { creacion:"Creación", edicion:"Edición", eliminacion:"Eliminación",
+                    carga:"Llegó en una carga", deshacer_carga:"Retirado al deshacer una carga" };
+  $("ficha-historial").innerHTML = items.map(h => `
+    <li><b>${nombres[h.accion] || h.accion}</b>${h.motivo ? " — " + esc(h.motivo) : ""}
+      <div class="f">${new Date(h.created_at).toLocaleString("es-CO")}</div></li>`).join("");
+  $("historial-vacio").classList.toggle("oculto", items.length > 0);
+}
+
+$("ficha-volver").addEventListener("click", () => irA("animales"));
+
+/* ---------------- Formulario crear / editar ---------------- */
+function abrirFormulario(a){
+  const f = $("form-animal"); f.classList.remove("oculto");
+  $("form-animal-titulo").textContent = a ? "Editar animal" : "Nuevo animal";
+  $("fa-arete").value = a ? a.arete : "";
+  $("fa-nombre").value = a ? a.nombre : "";
+  $("fa-sexo").value = a ? (a.sexo || "") : "";
+  $("fa-categoria").value = a ? (a.categoria || "") : "";
+  $("fa-nacimiento").value = a ? (a.fecha_nacimiento || "") : "";
+  $("fa-raza").value = a ? (a.raza || "") : "";
+  $("fa-rodeo").value = a && a.rodeos ? a.rodeos.nombre : "";
+  $("fa-estado").value = a ? a.estado_existencia : "Activo";
+  $("fa-reproductivo").value = a ? (a.estado_reproductivo || "") : "";
+  $("fa-notas").value = a ? (a.notas || "") : "";
+  $("fa-motivo").value = "";
+  $("fa-motivo-wrap").classList.toggle("oculto", !a); // el motivo se exige al corregir (S1-D)
+  f.scrollIntoView({ behavior: "smooth" });
+}
+$("btn-editar").addEventListener("click", () => abrirFormulario(animalActual));
+$("fa-cancelar").addEventListener("click", () => $("form-animal").classList.add("oculto"));
+
+async function resolverRodeo(nombre){
+  nombre = (nombre || "").trim(); if(!nombre) return null;
+  const ex = rodeos.find(r => r.nombre.toLowerCase() === nombre.toLowerCase());
+  if(ex) return ex.id;
+  const { data, error } = await sb.from("rodeos").insert({ org_id: miOrg.id, nombre }).select().single();
+  if(error) throw error;
+  rodeos.push(data); return data.id;
+}
+
+$("form-animal").addEventListener("submit", async e => {
+  e.preventDefault();
+  const editando = !!animalActual;
+  const motivo = $("fa-motivo").value.trim();
+  if(editando && !motivo){ aviso("Escriba el motivo del cambio: toda corrección queda registrada con su motivo.", "error"); return; }
+  const datos = {
+    org_id: miOrg.id,
+    arete: $("fa-arete").value.trim(),
+    nombre: $("fa-nombre").value.trim(),
+    sexo: $("fa-sexo").value || null,
+    categoria: $("fa-categoria").value.trim() || null,
+    fecha_nacimiento: $("fa-nacimiento").value || null,
+    raza: $("fa-raza").value.trim() || null,
+    estado_existencia: $("fa-estado").value,
+    estado_reproductivo: $("fa-reproductivo").value.trim() || null,
+    notas: $("fa-notas").value.trim() || null
+  };
+  if(!datos.arete || !datos.nombre){ aviso("Arete y nombre son obligatorios.", "error"); return; }
+  try{
+    datos.rodeo_id = await resolverRodeo($("fa-rodeo").value);
+    if(editando){
+      const cambios = {};
+      for(const k of Object.keys(datos)){
+        if(k === "org_id") continue;
+        if(String(animalActual[k] ?? "") !== String(datos[k] ?? "")) cambios[k] = { de: animalActual[k], a: datos[k] };
+      }
+      const { error } = await sb.from("animales").update(datos).eq("id", animalActual.id);
+      if(error) throw error;
+      await sb.from("historial").insert({ org_id: miOrg.id, animal_id: animalActual.id,
+        accion: "edicion", motivo, detalle: cambios });
+      aviso("Animal actualizado y corrección registrada con su motivo.", "ok");
+    }else{
+      const { data, error } = await sb.from("animales").insert(datos).select().single();
+      if(error) throw error;
+      await sb.from("historial").insert({ org_id: miOrg.id, animal_id: data.id,
+        accion: "creacion", motivo: "Registro manual" });
+      aviso("Animal creado.", "ok");
+    }
+    await cargarTodo();
+    const id = editando ? animalActual.id : animales.find(x => x.arete === datos.arete && !x.eliminado)?.id;
+    if(id) abrirFicha(id); else irA("animales");
+  }catch(ex){
+    aviso("No se pudo guardar: " + (ex.message || ex) +
+      (String(ex.message||"").includes("animales_arete_unico") ? " — Ese arete ya existe en su organización." : ""), "error");
+  }
+});
+
+/* ---------------- Eliminar (lógico, con motivo) ---------------- */
+$("btn-eliminar").addEventListener("click", async () => {
+  if(!animalActual) return;
+  const motivo = prompt(`Eliminar a ${animalActual.arete} · ${animalActual.nombre}.\nQueda en el historial, no se borra el registro.\nMotivo de la eliminación:`);
+  if(motivo === null) return;
+  if(!motivo.trim()){ aviso("La eliminación necesita un motivo.", "error"); return; }
+  const { error } = await sb.from("animales")
+    .update({ eliminado: true }).eq("id", animalActual.id);
+  if(error){ aviso("No se pudo eliminar: " + error.message, "error"); return; }
+  await sb.from("historial").insert({ org_id: miOrg.id, animal_id: animalActual.id,
+    accion: "eliminacion", motivo: motivo.trim() });
+  aviso("Animal eliminado con su motivo registrado.", "ok");
+  await cargarTodo(); irA("animales");
+});
+
+/* ---------------- Foto opcional (sin GPS, comprimida) ---------------- */
+$("btn-foto").addEventListener("click", () => $("input-foto").click());
+$("input-foto").addEventListener("change", async e => {
+  const file = e.target.files[0]; e.target.value = "";
+  if(!file || !animalActual) return;
+  try{
+    const blob = await comprimirImagen(file, 900);
+    const ruta = `${miOrg.id}/${animalActual.id}.jpg`;
+    const { error } = await sb.storage.from("fotos-animales")
+      .upload(ruta, blob, { upsert: true, contentType: "image/jpeg" });
+    if(error) throw error;
+    const { error: e2 } = await sb.from("animales").update({ foto_path: ruta }).eq("id", animalActual.id);
+    if(e2) throw e2;
+    animalActual.foto_path = ruta;
+    await cargarFoto(animalActual);
+    aviso("Foto guardada.", "ok");
+  }catch(ex){ aviso("No se pudo subir la foto: " + (ex.message || ex), "error"); }
+});
+
+function comprimirImagen(file, maxLado){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const escala = Math.min(1, maxLado / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * escala);
+      canvas.height = Math.round(img.height * escala);
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error("sin blob")), "image/jpeg", 0.82);
+      URL.revokeObjectURL(img.src);
+    };
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+/* ---------------- Importación en dos fases (D60) ---------------- */
+const norm = s => String(s ?? "").trim().toLowerCase()
+  .normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]/g, "");
+
+function fechaDesdeCelda(v){
+  if(v === null || v === undefined || v === "") return null;
+  if(typeof v === "number"){ // fecha serial de Excel
+    const d = XLSX.SSF.parse_date_code(v);
+    if(d) return `${d.y}-${String(d.m).padStart(2,"0")}-${String(d.d).padStart(2,"0")}`;
+    return null;
+  }
+  const s = String(v).trim();
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if(m) return `${m[1]}-${m[2].padStart(2,"0")}-${m[3].padStart(2,"0")}`;
+  m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/); if(m) return `${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
+  return null;
+}
+
+$("input-excel").addEventListener("change", async e => {
+  const file = e.target.files[0]; if(!file) return;
+  impArchivo = file.name; impFilasValidas = [];
+  $("imp-fase2").classList.add("oculto");
+  const res = $("imp-resumen"); res.innerHTML = "<p class='sub'>Leyendo y validando…</p>";
+  try{
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: "array" });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const filasCrudas = XLSX.utils.sheet_to_json(ws, { defval: "" });
+    if(!filasCrudas.length){ res.innerHTML = '<div class="aviso error">El archivo no tiene filas de datos.</div>'; return; }
+
+    const claves = {}; Object.keys(filasCrudas[0]).forEach(k => claves[norm(k)] = k);
+    const col = nombre => claves[norm(nombre)];
+    if(!col("arete") || !col("nombre")){
+      res.innerHTML = '<div class="aviso error">Faltan las columnas obligatorias <b>arete</b> y <b>nombre</b>. Revise la plantilla.</div>'; return;
+    }
+    const existentes = new Set(animales.filter(a => !a.eliminado).map(a => a.arete.toUpperCase()));
+    const enArchivo = new Set(); const errores = []; const validas = [];
+    filasCrudas.forEach((f, i) => {
+      const n = i + 2; // fila en la hoja (1 = encabezado)
+      const arete = String(f[col("arete")] ?? "").trim();
+      const nombre = String(f[col("nombre")] ?? "").trim();
+      if(!arete && !nombre) return; // fila vacía
+      if(!arete){ errores.push(`Fila ${n}: falta el arete.`); return; }
+      if(!nombre){ errores.push(`Fila ${n} (${arete}): falta el nombre.`); return; }
+      const clave = arete.toUpperCase();
+      if(enArchivo.has(clave)){ errores.push(`Fila ${n}: el arete ${arete} está repetido dentro del archivo.`); return; }
+      if(existentes.has(clave)){ errores.push(`Fila ${n}: el arete ${arete} ya existe en su inventario.`); return; }
+      enArchivo.add(clave);
+      const sexoCrudo = norm(f[col("sexo")]);
+      validas.push({
+        arete, nombre,
+        sexo: sexoCrudo.startsWith("h") ? "Hembra" : sexoCrudo.startsWith("m") ? "Macho" : null,
+        categoria: String(f[col("categoria")] ?? "").trim() || null,
+        fecha_nacimiento: fechaDesdeCelda(f[col("fecha_nacimiento")]),
+        raza: String(f[col("raza")] ?? "").trim() || null,
+        rodeo_nombre: String(f[col("rodeo")] ?? "").trim() || null,
+        estado_existencia: ["Activo","Vendido","Muerto","Baja"]
+          .find(x => norm(x) === norm(f[col("estado")])) || "Activo"
+      });
+    });
+
+    impFilasValidas = validas;
+    res.innerHTML = `
+      <div class="aviso ${errores.length ? "info" : "ok"}">
+        <b>${validas.length} animales válidos</b> listos para importar ·
+        ${errores.length} filas con problema (no entrarán).</div>
+      ${errores.length ? `<div class="tarjeta" style="box-shadow:none"><h2>Filas con problema</h2>
+        <ul class="hist">${errores.slice(0, 60).map(x => `<li>${esc(x)}</li>`).join("")}</ul>
+        ${errores.length > 60 ? `<p class="sub">… y ${errores.length - 60} más.</p>` : ""}</div>` : ""}`;
+    if(validas.length){
+      $("imp-fase2-texto").textContent =
+        `Se creará la carga «${impArchivo}» con ${validas.length} animales. Podrá deshacerla después desde la pestaña Cargas.`;
+      $("imp-fase2").classList.remove("oculto");
+    }
+  }catch(ex){
+    res.innerHTML = '<div class="aviso error">No se pudo leer el archivo: ' + esc(ex.message || ex) + "</div>";
+  }
+});
+
+$("btn-cancelar-carga").addEventListener("click", () => {
+  impFilasValidas = []; $("input-excel").value = "";
+  $("imp-resumen").innerHTML = ""; $("imp-fase2").classList.add("oculto");
+});
+
+$("btn-confirmar-carga").addEventListener("click", async () => {
+  if(!impFilasValidas.length) return;
+  const btn = $("btn-confirmar-carga"); btn.disabled = true; btn.textContent = "Importando…";
+  try{
+    const { data: carga, error } = await sb.from("cargas")
+      .insert({ org_id: miOrg.id, archivo: impArchivo, insertados: impFilasValidas.length })
+      .select().single();
+    if(error) throw error;
+    for(const f of impFilasValidas) f.rodeo_id = await resolverRodeo(f.rodeo_nombre);
+    const filas = impFilasValidas.map(f => ({
+      org_id: miOrg.id, arete: f.arete, nombre: f.nombre, sexo: f.sexo,
+      categoria: f.categoria, fecha_nacimiento: f.fecha_nacimiento, raza: f.raza,
+      rodeo_id: f.rodeo_id, estado_existencia: f.estado_existencia, carga_id: carga.id
+    }));
+    for(let i = 0; i < filas.length; i += 200){
+      const { error: e2 } = await sb.from("animales").insert(filas.slice(i, i + 200));
+      if(e2) throw e2;
+    }
+    await sb.from("historial").insert({ org_id: miOrg.id, animal_id: null, accion: "carga",
+      motivo: `Carga ${impArchivo}`, detalle: { carga_id: carga.id, insertados: filas.length } });
+    aviso(`Carga completa: ${filas.length} animales importados.`, "ok");
+    impFilasValidas = []; $("input-excel").value = "";
+    $("imp-resumen").innerHTML = ""; $("imp-fase2").classList.add("oculto");
+    await cargarTodo(); irA("animales");
+  }catch(ex){
+    aviso("La importación falló: " + (ex.message || ex), "error");
+  }finally{ btn.disabled = false; btn.textContent = "Confirmar e importar"; }
+});
+
+/* ---------------- Cargas y deshacer (D62) ---------------- */
+async function renderCargas(){
+  const { data } = await sb.from("cargas").select("*").order("created_at", { ascending: false });
+  const lista = data || [];
+  $("tabla-cargas").innerHTML = lista.map(c => `
+    <tr><td>${new Date(c.created_at).toLocaleString("es-CO")}</td>
+      <td>${esc(c.archivo || "—")}</td><td>${c.insertados}</td>
+      <td><span class="chip ${c.estado === "aplicada" ? "verde" : "rojo"}">${esc(c.estado)}</span></td>
+      <td>${c.estado === "aplicada"
+        ? `<button class="btn sec" data-deshacer="${c.id}">Deshacer</button>` : ""}</td></tr>`).join("");
+  $("cargas-vacio").classList.toggle("oculto", lista.length > 0);
+}
+$("tabla-cargas").addEventListener("click", async e => {
+  const b = e.target.closest("button[data-deshacer]"); if(!b) return;
+  const cargaId = b.dataset.deshacer;
+  const motivo = prompt("Deshacer esta carga retira todos sus animales del inventario (quedan en el historial).\nMotivo:");
+  if(motivo === null) return;
+  if(!motivo.trim()){ aviso("Para deshacer una carga se necesita un motivo.", "error"); return; }
+  const { error } = await sb.from("animales")
+    .update({ eliminado: true }).eq("carga_id", cargaId).eq("eliminado", false);
+  if(error){ aviso("No se pudo deshacer: " + error.message, "error"); return; }
+  await sb.from("cargas").update({ estado: "deshecha" }).eq("id", cargaId);
+  await sb.from("historial").insert({ org_id: miOrg.id, animal_id: null,
+    accion: "deshacer_carga", motivo: motivo.trim(), detalle: { carga_id: cargaId } });
+  aviso("Carga deshecha. Los animales quedaron retirados y el hecho registrado.", "ok");
+  await cargarTodo();
+});
+
+iniciar();
+</script>
+</body>
+</html>
