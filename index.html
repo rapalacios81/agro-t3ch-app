@@ -91,6 +91,38 @@
   .foto{width:100%; max-height:280px; object-fit:cover; border-radius:.7rem; border:1px solid var(--borde);}
   .vacio{color:var(--gris); text-align:center; padding:1.6rem 0; font-size:.95rem;}
   footer{color:var(--gris); font-size:.78rem; text-align:center; padding:1.2rem 1rem 2rem;}
+  /* ---------- Prototipo S2 · Modo lienzo inmersivo (UX-PROP-SUPERHUMAN-CANVAS-01) ---------- */
+  #lienzo{position:fixed; inset:0; z-index:60; background:var(--salvia-osc); color:#F2EFE6;
+       display:flex; flex-direction:column;}
+  #lienzo .lz-top{display:flex; align-items:center; gap:.7rem; padding:.8rem 1rem;}
+  #lienzo .lz-titulo{font-weight:800; letter-spacing:.02em; font-size:1.05rem;}
+  #lienzo .lz-sub{font-size:.78rem; opacity:.85;}
+  #lienzo .lz-top button{background:transparent; border:1px solid rgba(255,255,255,.45); color:#F2EFE6;
+       border-radius:.6rem; padding:.55rem .9rem; font-weight:700; min-height:48px;}
+  .lz-cuerpo{flex:1; overflow-y:auto; padding:0 1rem 1.4rem; width:100%; max-width:760px; margin:0 auto;}
+  .lz-buscar{font-size:1.3rem; padding:1rem 1.1rem; min-height:68px; border-radius:.9rem; border:none;}
+  .lz-acciones{display:flex; gap:.6rem; margin:.8rem 0; flex-wrap:wrap;}
+  .lz-btn{flex:1; min-width:150px; min-height:56px; border-radius:.8rem; border:1px solid rgba(255,255,255,.45);
+       background:rgba(255,255,255,.08); color:#F2EFE6; font-weight:800; font-size:1rem; padding:.7rem;}
+  .lz-btn.principal{background:#F5F2EA; color:var(--salvia-osc); border-color:#F5F2EA;}
+  .lz-btn:disabled{opacity:.45; cursor:default;}
+  .lz-ficha .lz-btn{background:var(--papel); color:var(--grafito); border-color:var(--borde);}
+  .lz-ficha .lz-btn.principal{background:var(--salvia-osc); color:#F5F2EA; border-color:var(--salvia-osc);}
+  .lz-estado{font-size:.88rem; opacity:.9; margin:.4rem 0 .8rem; min-height:1.2em;}
+  .lz-lista{display:flex; flex-direction:column; gap:.6rem; transition:filter .25s ease, opacity .25s ease;}
+  .lz-lista.atenuada{filter:brightness(.55) saturate(.7); opacity:.6; pointer-events:none;}
+  .lz-card{display:flex; align-items:center; gap:.9rem; width:100%; text-align:left; min-height:76px;
+       background:var(--papel); color:var(--grafito); border:none; border-radius:.9rem; padding:.8rem 1rem; cursor:pointer;}
+  .lz-card .lz-arete{font-size:1.45rem; font-weight:800; line-height:1.1;}
+  .lz-card .lz-nombre{font-size:1rem; color:var(--gris);}
+  .lz-card .lz-rodeo{margin-left:auto; text-align:right; font-size:.85rem; color:var(--gris);}
+  .lz-vacio{color:#F2EFE6; opacity:.9; text-align:center; padding:2rem 0; font-size:1rem;}
+  .lz-ficha{background:var(--papel); color:var(--grafito); border-radius:1rem; padding:1.1rem;
+       box-shadow:0 12px 40px rgba(0,0,0,.35); margin-bottom:1rem;}
+  .lz-ficha h2{font-size:1.5rem; margin-bottom:.2rem;}
+  .lz-ficha .lz-kx{font-size:.88rem; margin-top:.4rem;}
+  .lz-ficha .lz-kx li{list-style:none; border-left:3px solid var(--piedra); padding-left:.6rem; margin-bottom:.4rem;}
+
   @media (max-width:640px){ th:nth-child(5), td:nth-child(5){display:none;} }
 </style>
 </head>
@@ -180,6 +212,11 @@
       <div class="tarjeta">
         <h2>Animales por rodeo</h2>
         <div id="panel-rodeos"></div>
+      </div>
+      <div class="tarjeta" style="margin-top:1rem">
+        <h2>Prototipo Sprint 2 — Modo lienzo inmersivo</h2>
+        <p class="sub">La propuesta de Chinazo UX-PROP-SUPERHUMAN-CANVAS-01, materializada como vista alterna sobre los mismos datos: consulta rápida en campo y revisión de inventario, una sola tarea por pantalla y botones grandes de decisión. La vista convencional no cambia: compare ambas y decida. En computador, el lienzo también abre con Ctrl + K.</p>
+        <button class="btn" id="btn-lienzo" type="button">Abrir modo lienzo</button>
       </div>
     </section>
 
@@ -338,6 +375,29 @@
       </div>
     </section>
   </main>
+  <!-- ===== PROTOTIPO S2 · MODO LIENZO INMERSIVO (UX-PROP-SUPERHUMAN-CANVAS-01) ===== -->
+  <div id="lienzo" class="oculto" role="dialog" aria-label="Modo lienzo, prototipo del Sprint 2">
+    <div class="lz-top">
+      <div>
+        <div class="lz-titulo">Modo lienzo · Prototipo S2</div>
+        <div class="lz-sub">Consulta rápida en campo y revisión de inventario — los mismos datos de su organización</div>
+      </div>
+      <span style="flex:1"></span>
+      <button id="lz-salir" type="button">Salir del lienzo</button>
+    </div>
+    <div class="lz-cuerpo">
+      <input id="lz-buscar" class="lz-buscar" placeholder="Buscar por arete o nombre…" autocomplete="off">
+      <div class="lz-acciones">
+        <button class="lz-btn principal" id="lz-btn-revision" type="button">Revisar inventario</button>
+        <button class="lz-btn" id="lz-btn-limpiar" type="button">Limpiar búsqueda</button>
+      </div>
+      <p class="lz-estado" id="lz-estado"></p>
+      <div id="lz-ficha-zona"></div>
+      <div class="lz-lista" id="lz-lista"></div>
+      <p class="lz-vacio oculto" id="lz-vacio"></p>
+    </div>
+  </div>
+
   <footer>Agro-T3ch · Sprint 1 — Inventario de animales · Los datos viven en la base de datos de su organización (Supabase), aislados por cliente.</footer>
 </div>
 
@@ -449,6 +509,7 @@ function reiniciarEstado(){
   $("form-animal").classList.add("oculto");
   $("buscar").value = ""; $("org-nombre").value = "";
   $("tabla-animales").innerHTML = ""; $("tabla-cargas").innerHTML = "";
+  cerrarLienzo(); // el lienzo tampoco conserva nada entre sesiones (residuo cero)
   irA("panel");
   renderPanel(); renderAnimales(); // primer pintado ya en ceros, sin esperar la red
 }
@@ -1098,6 +1159,150 @@ $("btn-confirmar-deshacer").addEventListener("click", async () => {
   cargaADeshacer = null; $("deshacer-form").classList.add("oculto");
   aviso("Carga deshecha. Los animales quedaron retirados y la reversión registrada en el kardex de cada uno.", "ok");
   await cargarTodo();
+});
+
+/* ---------------- Prototipo S2 · Modo lienzo inmersivo ----------------
+   Vista alterna sobre los MISMOS datos ya cargados del servidor en
+   esta sesión (la ficha y el kardex sí se consultan en vivo).
+   Materializa los cuatro pilares de UX-PROP-SUPERHUMAN-CANVAS-01
+   (Chinazo, §4 de Sprint 1-Trabajo) con dos mitigaciones de campo:
+   la tarjeta activa NUNCA pierde contraste (solo se atenúa el fondo)
+   y la paleta de acciones es un botón grande, no un atajo de teclado.
+   Flujos: consulta rápida en campo y revisión de inventario. */
+let lzIndice = 0, lzModoRevision = false, lzActual = null;
+
+function lzActivos(){
+  return animales.filter(a => !a.eliminado)
+    .slice().sort((x, y) => x.arete.localeCompare(y.arete, "es", { numeric: true }));
+}
+function lzEstado(txt){ $("lz-estado").textContent = txt; }
+function lzFiltrados(q){
+  q = (q || "").trim().toLowerCase();
+  return lzActivos().filter(a => !q || a.arete.toLowerCase().includes(q) || a.nombre.toLowerCase().includes(q));
+}
+
+function abrirLienzo(){
+  $("lienzo").classList.remove("oculto");
+  lzModoRevision = false; lzActual = null;
+  $("lz-ficha-zona").innerHTML = "";
+  $("lz-lista").classList.remove("atenuada");
+  $("lz-buscar").value = "";
+  lzRenderLista("");
+  setTimeout(() => $("lz-buscar").focus(), 60);
+}
+function cerrarLienzo(){
+  $("lienzo").classList.add("oculto");
+  lzActual = null; lzModoRevision = false;
+  $("lz-ficha-zona").innerHTML = "";
+  $("lz-lista").classList.remove("atenuada");
+}
+function lzVolverLista(){
+  lzActual = null; lzModoRevision = false;
+  $("lz-ficha-zona").innerHTML = "";
+  $("lz-lista").classList.remove("atenuada");
+  lzRenderLista($("lz-buscar").value);
+}
+function lzRenderLista(q){
+  const lista = lzFiltrados(q);
+  $("lz-lista").innerHTML = lista.map(a => `
+    <button class="lz-card" type="button" data-id="${a.id}">
+      <span><span class="lz-arete">${esc(a.arete)}</span><br><span class="lz-nombre">${esc(a.nombre)}</span></span>
+      <span class="lz-rodeo">${esc(a.rodeos ? a.rodeos.nombre : "Sin dato")}<br>${esc(a.estado_existencia)}</span>
+    </button>`).join("");
+  const vacio = $("lz-vacio");
+  if(!lista.length){
+    vacio.textContent = lzActivos().length
+      ? "No se encontraron animales con el término buscado"
+      : "No hay animales registrados. Importe su inventario para comenzar";
+    vacio.classList.remove("oculto");
+  } else vacio.classList.add("oculto");
+  lzEstado(lista.length === lzActivos().length
+    ? `${lista.length} animales de su organización, cargados del servidor en esta sesión. Toque uno para ver su ficha.`
+    : `${lista.length} de ${lzActivos().length} animales coinciden con la búsqueda.`);
+}
+
+async function lzAbrirFicha(a){
+  lzActual = a;
+  $("lz-lista").classList.add("atenuada");
+  lzEstado("Cargando ficha y kardex desde el servidor…");
+  const lista = lzModoRevision ? lzActivos() : lzFiltrados($("lz-buscar").value);
+  const pos = lista.findIndex(x => x.id === a.id);
+  const nac = a.fecha_nacimiento ? fmtFecha(a.fecha_nacimiento)
+    : (a.anio_nacimiento ? `${a.anio_nacimiento} (solo el año)` : "Sin dato");
+  const campoLz = (t, v) => `<div style="min-width:130px; flex:1"><label>${t}</label><div>${esc(v || "Sin dato")}</div></div>`;
+  $("lz-ficha-zona").innerHTML = `
+    <div class="lz-ficha">
+      <h2>${esc(a.arete)} · ${esc(a.nombre)}</h2>
+      <p class="sub" style="margin-bottom:.4rem">${esc(a.rodeos ? a.rodeos.nombre : "Sin dato")} · ${esc(a.estado_existencia)}${lzModoRevision ? ` · Revisión: animal ${pos + 1} de ${lista.length}` : ""}</p>
+      <img id="lz-foto" class="foto oculto" alt="Foto del animal">
+      <p class="sub" id="lz-sin-foto">Sin fotografía cargada</p>
+      <div class="fila">
+        ${campoLz("Sexo", a.sexo)}${campoLz("Categoría", a.categoria)}${campoLz("Nacimiento", nac)}
+        ${campoLz("Raza / cruza", a.raza)}${campoLz("Estado reproductivo", a.estado_reproductivo)}
+      </div>
+      <h3 style="margin-top:.8rem; font-size:1rem">Kardex reciente</h3>
+      <ul class="lz-kx" id="lz-kx"><li>Consultando el kardex…</li></ul>
+      <div class="lz-acciones" style="margin-top:1rem">
+        <button class="lz-btn" id="lz-anterior" type="button">← Anterior</button>
+        <button class="lz-btn principal" id="lz-siguiente" type="button">Siguiente animal →</button>
+      </div>
+      <div class="lz-acciones">
+        <button class="lz-btn" id="lz-completa" type="button">Ver ficha completa</button>
+        <button class="lz-btn" id="lz-volver" type="button">Volver a la lista</button>
+      </div>
+    </div>`;
+  if(a.foto_path){
+    const { data } = await sb.storage.from("fotos-animales").createSignedUrl(a.foto_path, 3600);
+    const img = $("lz-foto");
+    if(data && data.signedUrl && img){ img.src = data.signedUrl; img.classList.remove("oculto"); $("lz-sin-foto").classList.add("oculto"); }
+  }
+  const { data } = await sb.from("historial").select("*")
+    .eq("animal_id", a.id).order("created_at", { ascending: false }).limit(5);
+  const nombresKx = { creacion: "Creación", edicion: "Edición", eliminacion: "Eliminación",
+                      carga: "Llegó en una carga", deshacer_carga: "Retirado al deshacer una carga",
+                      comentario: "Comentario" };
+  const kx = $("lz-kx");
+  if(kx){
+    const items = data || [];
+    kx.innerHTML = items.length ? items.map(h =>
+      `<li><b>${nombresKx[h.accion] || h.accion}</b>${h.motivo ? " — " + esc(h.motivo) : ""}<br><span style="color:var(--gris); font-size:.8rem">${new Date(h.created_at).toLocaleString("es-CO")} · por ${esc(h.autor_email || "autor no registrado")}</span></li>`).join("")
+      : "<li>Sin eventos registrados todavía.</li>";
+  }
+  lzEstado("Ficha cargada desde el servidor.");
+  $("lz-anterior").disabled = pos <= 0;
+  $("lz-siguiente").disabled = pos < 0 || pos >= lista.length - 1;
+  $("lz-anterior").addEventListener("click", () => { if(pos > 0){ lzIndice = pos - 1; lzAbrirFicha(lista[pos - 1]); } });
+  $("lz-siguiente").addEventListener("click", () => { if(pos >= 0 && pos < lista.length - 1){ lzIndice = pos + 1; lzAbrirFicha(lista[pos + 1]); } });
+  $("lz-volver").addEventListener("click", lzVolverLista);
+  $("lz-completa").addEventListener("click", () => { const id = a.id; cerrarLienzo(); abrirFicha(id); });
+  $("lz-ficha-zona").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function lzIniciarRevision(){
+  const lista = lzActivos();
+  if(!lista.length){ lzEstado("No hay animales para revisar. Importe su inventario para comenzar."); return; }
+  lzModoRevision = true; lzIndice = 0;
+  $("lz-buscar").value = "";
+  lzAbrirFicha(lista[0]);
+}
+
+$("btn-lienzo").addEventListener("click", abrirLienzo);
+$("lz-salir").addEventListener("click", cerrarLienzo);
+$("lz-btn-limpiar").addEventListener("click", () => { $("lz-buscar").value = ""; lzVolverLista(); $("lz-buscar").focus(); });
+$("lz-btn-revision").addEventListener("click", lzIniciarRevision);
+$("lz-buscar").addEventListener("input", e => { if(!lzActual) lzRenderLista(e.target.value); });
+$("lz-lista").addEventListener("click", e => {
+  const c = e.target.closest("button[data-id]"); if(!c) return;
+  const a = animales.find(x => x.id === c.dataset.id); if(a) lzAbrirFicha(a);
+});
+document.addEventListener("keydown", e => {
+  if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k"
+      && !$("vista-app").classList.contains("oculto") && $("lienzo").classList.contains("oculto")){
+    e.preventDefault(); abrirLienzo();
+  }
+  if(e.key === "Escape" && !$("lienzo").classList.contains("oculto")){
+    if(lzActual) lzVolverLista(); else cerrarLienzo();
+  }
 });
 
 iniciar();
