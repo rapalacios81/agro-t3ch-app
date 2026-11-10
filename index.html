@@ -1225,7 +1225,9 @@ async function lzAbrirFicha(a){
   lzActual = a;
   $("lz-lista").classList.add("atenuada");
   lzEstado("Cargando ficha y kardex desde el servidor…");
-  const lista = lzModoRevision ? lzActivos() : lzFiltrados($("lz-buscar").value);
+  // La búsqueda sirve para ENCONTRAR al animal; una vez en la ficha,
+  // Anterior/Siguiente recorren el hato completo, no el filtro.
+  const lista = lzActivos();
   const pos = lista.findIndex(x => x.id === a.id);
   const nac = a.fecha_nacimiento ? fmtFecha(a.fecha_nacimiento)
     : (a.anio_nacimiento ? `${a.anio_nacimiento} (solo el año)` : "Sin dato");
